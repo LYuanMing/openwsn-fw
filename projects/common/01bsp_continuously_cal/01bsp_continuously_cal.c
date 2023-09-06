@@ -59,19 +59,28 @@ typedef struct {
     
     uint8_t              schedule_ack;
     uint8_t              ok_to_send_ack;
+
+    uint8_t uart_lastTxByteIndex;
+    volatile   uint8_t uartDone;
 } app_vars_t;
 
 app_vars_t app_vars;
 
+
+uint8_t stringToSend[256] = {0};
+uint16_t length = 0;
+char flag[] = "r\r\n";
 //=========================== prototypes ======================================
 
 void cb_scTimerCompare(void);
 void cb_startFrame(PORT_TIMER_WIDTH timestamp);
 void cb_endFrame(PORT_TIMER_WIDTH timestamp);
+void cb_uartTxDone(void);
+uint8_t cb_uartRxCb(void);
 void prepare_frame(uint8_t data);
 
 void delay(void);
-
+void send_string(const char* str);
 //=========================== main ============================================
 
 /**
@@ -86,6 +95,12 @@ int mote_main(void) {
 
     // initialize board
     board_init();
+
+    // setup UART
+    uart_setCallbacks(cb_uartTxDone,cb_uartRxCb);
+    uart_enableInterrupts();
+    length = strlen("uart is ok!");
+    send_string("uart is ok!");
 
     // add radio callback functions
     sctimer_set_callback(cb_scTimerCompare);
@@ -104,19 +119,22 @@ int mote_main(void) {
     sctimer_enable();
     
     app_vars.read_temperature = sensors_getCallbackRead(SENSOR_TEMPERATURE);
-    
+        
     app_vars.txpk_txDone = 1;
     app_vars.rx_timeout  = 1;
-    
+    length = 23;
+    send_string("status: S_SEND_BEACON\r\n");
     while(1) {
-        
+        //length = 3;
+        //send_string(flag);
         switch(app_vars.state){
             case S_SEND_BEACON:
-                        
+                
                 if (app_vars.txpk_txDone){
                     
                     if (app_vars.time_in_second == BEACON_PERIOD) {
-                        
+                        length = 29;
+                        send_string("next status: S_LISTEN_PROBE\r\n");
                         app_vars.state = S_LISTEN_PROBE;
                         break;
                     }
@@ -140,14 +158,16 @@ int mote_main(void) {
                     app_vars.txack_txDone = 0;
                     app_vars.rxpk_rxDone  = 0;
                     app_vars.rx_timeout   = 0;
-                    
+                    flag[0] = 'f';
                     radio_rfOff();
                     radio_rxEnable();
                     radio_rxNow();
-                    
+                    length = 5;
+                    send_string("n l\r\n");
                 } else {
                     if (app_vars.rxpk_rxDone == 1) {
-                        
+                        length = 5;
+                        send_string("r a\r\n");
                         app_vars.rxpk_rxDone    = 0;
                         app_vars.txack_txDone   = 0;
                         app_vars.state = S_REPLY_ACK;
@@ -158,7 +178,8 @@ int mote_main(void) {
             break;
             case S_REPLY_ACK:
                 if (app_vars.txack_txDone == 1){
-                    
+                    length = 3;
+                    send_string("p\r\n");
                     app_vars.txack_started  = 0;
                     app_vars.state          = S_LISTEN_PROBE;
                     
@@ -166,8 +187,12 @@ int mote_main(void) {
                 } else {
                     
                     if (app_vars.txack_started == 1) {
+                        length = 6;
+                        send_string("a sd\r\n");
                         board_sleep();
                     } else {
+                        length = 6;
+                        send_string("a sg\r\n");
                         freq_offset = radio_getFrequencyOffset();
                         prepare_frame(freq_offset);
                         while(app_vars.ok_to_send_ack==0);
@@ -245,7 +270,7 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
                 packet[0]=='C'          &&
                 packet[1]=='F'
             ) {
-            
+                flag[0] = 't';
                 sctimer_disable();
                 app_vars.rxpk_rxDone = 1;
                 
@@ -265,6 +290,30 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
 
    // led
    leds_sync_off();
+}
+
+void cb_uartTxDone(void) {
+   app_vars.uart_lastTxByteIndex++;
+   if (app_vars.uart_lastTxByteIndex<length) {
+      uart_writeByte(stringToSend[app_vars.uart_lastTxByteIndex]);
+   } else {
+      app_vars.uartDone = 1;
+   }
+}
+
+uint8_t cb_uartRxCb(void) {
+   uint8_t byte;
+   
+   // toggle LED
+   leds_error_toggle();
+   
+   // read received byte
+   byte = uart_readByte();
+   
+   // echo that byte over serial
+   uart_writeByte(byte);
+   
+   return 0;
 }
 
 // ========================== private =========================================
@@ -305,4 +354,16 @@ void prepare_frame(uint8_t data) {
 void delay(void) {
     uint16_t i;
     for (i=0;i<0x70ff;i++);
+}
+
+
+void send_string(const char* str)
+{
+    strcpy(stringToSend, str);
+    for (uint16_t i = length; i < sizeof(stringToSend); i++)
+    stringToSend[i] = 0;
+    app_vars.uartDone = 0;
+    app_vars.uart_lastTxByteIndex = 0;
+    uart_writeByte(stringToSend[app_vars.uart_lastTxByteIndex]);
+    while(app_vars.uartDone==0);
 }

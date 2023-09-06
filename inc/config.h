@@ -427,7 +427,7 @@
  *
  */
 #ifndef BOARD_SENSORS_ENABLED
-#define BOARD_SENSORS_ENABLED (0)
+#define BOARD_SENSORS_ENABLED (1)
 #endif
 
 /**

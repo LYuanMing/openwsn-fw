@@ -37,6 +37,8 @@
 # Make sure you don't lock yourself out!! (enable backdoor in your firmware)
 # More info at https://github.com/JelmerT/cc2538-bsl
 
+# flash cmd: python cc2538-bsl.py -b 460800 -p COM13 -e -w -v your_image.bin (attention!!! 460800 or 112500 baud rate is proper. There will have two COM port, one of them doesn't work then try another )
+
 from subprocess import Popen, PIPE
 
 import sys
@@ -150,10 +152,15 @@ class FirmwareFile(object):
             mdebug(10, "For more solid firmware type auto-detection, install "
                        "python-magic.")
             mdebug(10, "Please see the readme for more details.")
-
+        
         if firmware_is_hex:
             if have_hex_support:
+                # h = IntelHex(path)
+                # for i in range(2621396, 2621408, 1):
+                #     h._buf.pop(i)
+                # self.bytes = bytearray(h.tobinarray())
                 self.bytes = bytearray(IntelHex(path).tobinarray())
+                # print(len(self.bytes))
                 return
             else:
                 error_str = "Firmware is Intel Hex, but the IntelHex library " \
@@ -964,12 +971,12 @@ def _parse_range_values(device, values):
         try:
             for value in values:
                 try:
-                    if int(value) % int(device.page_size) is not 0:
+                    if int(value) % int(device.page_size) != 0:
                         raise ValueError("Supplied addresses are not page_size: "
                                          "{} aligned".format(device.page_size))
                     page_addr_range.append(int(value))
                 except ValueError:
-                    if int(value, 16) % int(device.page_size) is not 0:
+                    if int(value, 16) % int(device.page_size) != 0:
                         raise ValueError("Supplied addresses are not page_size: "
                                          "{} aligned".format(device.page_size))
                     page_addr_range.append(int(value, 16))

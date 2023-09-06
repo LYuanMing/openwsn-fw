@@ -6,7 +6,7 @@ set(CMAKE_CXX_COMPILER arm-none-eabi-g++)
 set(SIZE_TOOL arm-none-eabi-size)
 set(OBJCOPY arm-none-eabi-objcopy)
 set(BOOTLOADER ${CMAKE_SOURCE_DIR}/bootloader/openmote-cc2538/cc2538-bsl.py)
-set(ARGS -e -w -v -b 460800)
+set(ARGS -e -w -v -b 115200)
 set(BIN_FILE ${PROJECT}.ihex)
 
 set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)

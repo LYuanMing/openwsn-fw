@@ -15,7 +15,8 @@ Load this program on your boards. The LEDs should start blinking furiously.
 // bsp modules required
 #include "board.h"
 #include "leds.h"
-
+#include <source/gpio.h>
+#include <headers/hw_memmap.h>
 void some_delay(void);
 
 /**

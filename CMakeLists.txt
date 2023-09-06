@@ -1,4 +1,6 @@
+# cmake .. -DBOARD=openmote-b-24ghz -DCMAKE_TOOLCHAIN_FILE=cmake/toolchains/openmote-b.cmake -G "MinGW Makefiles" -DPROJECT=bsp_continuously_cal -DBOOTLOAD=COMxx
 cmake_minimum_required(VERSION 3.13)
+
 
 project(OpenWSN-FW VERSION 2.0 LANGUAGES C ASM)
 
@@ -116,7 +118,7 @@ endif ()
 include(options)
 
 # Pull in cmake file responsible for building the project
-include(projects/${PROJECT})
+include(projects/auto)
 
 # general build settings
 message("\n*** GENERAL BUILD SETTINGS ***")
