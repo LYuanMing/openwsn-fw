@@ -2,45 +2,52 @@
 <session>
  <Bookmarks/>
  <Breakpoints groups="Breakpoints" active_group="Breakpoints">
-  <BreakpointListItem trigger="" line="167" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="../../common/01bsp_radio_rx/01bsp_radio_rx.c" useHWbreakpoint="false"/>
-  <Exceptions set="MemManage;UsageFault_Coprocessor;UsageFault_CheckingError;UsageFault_StateError;BusFault;ExceptionEntryReturnFault;HardFault"/>
+  <BreakpointListItem trigger="" line="252" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" group="Breakpoints" type="Breakpoint" state="2" filename="../../common/01bsp_radio_rx/01bsp_radio_rx.c" useHWbreakpoint="false"/>
  </Breakpoints>
  <ExecutionProfileWindow/>
  <FrameBufferWindow>
   <FrameBufferWindow bufferHeight="-1" addressSpace="" addressText="" bufferWidth="-1"/>
  </FrameBufferWindow>
  <Memory1>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_sweep_rx" radix="16" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_sweep_rx" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_radio_rx" sizeText="" addressText=""/>
  </Memory1>
  <Memory2>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_sweep_rx" radix="16" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_sweep_rx" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_radio_rx" sizeText="" addressText=""/>
  </Memory2>
  <Memory3>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_sweep_rx" radix="16" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_sweep_rx" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_radio_rx" sizeText="" addressText=""/>
  </Memory3>
  <Memory4>
-  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_sweep_rx" radix="16" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_sweep_rx" sizeText="" addressText=""/>
+  <MemoryWindow addressSpace="" dataSize="1" autoEvaluate="0" viewMode="0" viewType="4" addressOrder="0" columnsText="" refreshPeriod="0" name="01bsp_radio_rx" sizeText="" addressText=""/>
  </Memory4>
  <Project>
-  <ProjectSessionItem path="01bsp_sweep_rx"/>
-  <ProjectSessionItem path="01bsp_sweep_rx;01bsp_sweep_rx"/>
-  <ProjectSessionItem path="01bsp_sweep_rx;01bsp_sweep_rx;Application"/>
-  <ProjectSessionItem path="01bsp_sweep_rx;01bsp_sweep_rx;Nordic SDK15 Specific"/>
-  <ProjectSessionItem path="01bsp_sweep_rx;01bsp_sweep_rx;Nordic SDK15 Specific;nRF_Drivers"/>
-  <ProjectSessionItem path="01bsp_sweep_rx;01bsp_sweep_rx;OpenWSN"/>
-  <ProjectSessionItem path="01bsp_sweep_rx;01bsp_sweep_rx;OpenWSN;bsp"/>
+  <ProjectSessionItem path="01bsp_radio_rx"/>
+  <ProjectSessionItem path="01bsp_radio_rx;01bsp_radio_rx"/>
+  <ProjectSessionItem path="01bsp_radio_rx;01bsp_radio_rx;Application"/>
+  <ProjectSessionItem path="01bsp_radio_rx;01bsp_radio_rx;Nordic SDK15 Specific"/>
+  <ProjectSessionItem path="01bsp_radio_rx;01bsp_radio_rx;Nordic SDK15 Specific;nRF_Drivers"/>
+  <ProjectSessionItem path="01bsp_radio_rx;01bsp_radio_rx;OpenWSN"/>
+  <ProjectSessionItem path="01bsp_radio_rx;01bsp_radio_rx;OpenWSN;bsp"/>
  </Project>
  <Register1>
   <RegisterWindow visibleNodes="CPU - Current Context/r0;CPU - Current Context/r1;CPU - Current Context/r2;CPU - Current Context/r3;CPU - Current Context/r4;CPU - Current Context/r5;CPU - Current Context/r6;CPU - Current Context/r7;CPU - Current Context/r8;CPU - Current Context/r9;CPU - Current Context/r10;CPU - Current Context/r11;CPU - Current Context/r12;CPU - Current Context/sp(r13);CPU - Current Context/lr(r14);CPU - Current Context/pc(r15);CPU - Current Context/apsr;CPU/r0;CPU/r1;CPU/r2;CPU/r3;CPU/r4;CPU/r5;CPU/r6;CPU/r7;CPU/r8;CPU/r9;CPU/r10;CPU/r11;CPU/r12;CPU/sp(r13);CPU/lr(r14);CPU/pc(r15);CPU/xpsr;CPU/MSP;CPU/PSP;CPU/PRIMASK;CPU/BASEPRI;CPU/FAULTMASK;CPU/CONTROL;CPU/internal" binaryNodes="" asciiNodes="" openNodes="CPU - Current Context" name="01bsp_sweep_rx" decimalNodes="" octalNodes="" unsignedNodes=""/>
+  <RegisterWindow visibleNodes="CPU - Current Context/r0;CPU - Current Context/r1;CPU - Current Context/r2;CPU - Current Context/r3;CPU - Current Context/r4;CPU - Current Context/r5;CPU - Current Context/r6;CPU - Current Context/r7;CPU - Current Context/r8;CPU - Current Context/r9;CPU - Current Context/r10;CPU - Current Context/r11;CPU - Current Context/r12;CPU - Current Context/sp(r13);CPU - Current Context/lr(r14);CPU - Current Context/pc(r15);CPU - Current Context/apsr;CPU/r0;CPU/r1;CPU/r2;CPU/r3;CPU/r4;CPU/r5;CPU/r6;CPU/r7;CPU/r8;CPU/r9;CPU/r10;CPU/r11;CPU/r12;CPU/sp(r13);CPU/lr(r14);CPU/pc(r15);CPU/xpsr;CPU/MSP;CPU/PSP;CPU/PRIMASK;CPU/BASEPRI;CPU/FAULTMASK;CPU/CONTROL;CPU/internal" binaryNodes="" asciiNodes="" openNodes="CPU - Current Context" name="01bsp_radio_rx" decimalNodes="" octalNodes="" unsignedNodes=""/>
  </Register1>
  <Register2>
   <RegisterWindow visibleNodes="CPU - Current Context/r0;CPU - Current Context/r1;CPU - Current Context/r2;CPU - Current Context/r3;CPU - Current Context/r4;CPU - Current Context/r5;CPU - Current Context/r6;CPU - Current Context/r7;CPU - Current Context/r8;CPU - Current Context/r9;CPU - Current Context/r10;CPU - Current Context/r11;CPU - Current Context/r12;CPU - Current Context/sp(r13);CPU - Current Context/lr(r14);CPU - Current Context/pc(r15);CPU - Current Context/apsr;CPU/r0;CPU/r1;CPU/r2;CPU/r3;CPU/r4;CPU/r5;CPU/r6;CPU/r7;CPU/r8;CPU/r9;CPU/r10;CPU/r11;CPU/r12;CPU/sp(r13);CPU/lr(r14);CPU/pc(r15);CPU/xpsr;CPU/MSP;CPU/PSP;CPU/PRIMASK;CPU/BASEPRI;CPU/FAULTMASK;CPU/CONTROL;CPU/internal" binaryNodes="" asciiNodes="" openNodes="CPU - Current Context" name="01bsp_sweep_rx" decimalNodes="" octalNodes="" unsignedNodes=""/>
+  <RegisterWindow visibleNodes="CPU - Current Context/r0;CPU - Current Context/r1;CPU - Current Context/r2;CPU - Current Context/r3;CPU - Current Context/r4;CPU - Current Context/r5;CPU - Current Context/r6;CPU - Current Context/r7;CPU - Current Context/r8;CPU - Current Context/r9;CPU - Current Context/r10;CPU - Current Context/r11;CPU - Current Context/r12;CPU - Current Context/sp(r13);CPU - Current Context/lr(r14);CPU - Current Context/pc(r15);CPU - Current Context/apsr;CPU/r0;CPU/r1;CPU/r2;CPU/r3;CPU/r4;CPU/r5;CPU/r6;CPU/r7;CPU/r8;CPU/r9;CPU/r10;CPU/r11;CPU/r12;CPU/sp(r13);CPU/lr(r14);CPU/pc(r15);CPU/xpsr;CPU/MSP;CPU/PSP;CPU/PRIMASK;CPU/BASEPRI;CPU/FAULTMASK;CPU/CONTROL;CPU/internal" binaryNodes="" asciiNodes="" openNodes="CPU - Current Context" name="01bsp_radio_rx" decimalNodes="" octalNodes="" unsignedNodes=""/>
  </Register2>
  <Register3>
   <RegisterWindow visibleNodes="CPU - Current Context/r0;CPU - Current Context/r1;CPU - Current Context/r2;CPU - Current Context/r3;CPU - Current Context/r4;CPU - Current Context/r5;CPU - Current Context/r6;CPU - Current Context/r7;CPU - Current Context/r8;CPU - Current Context/r9;CPU - Current Context/r10;CPU - Current Context/r11;CPU - Current Context/r12;CPU - Current Context/sp(r13);CPU - Current Context/lr(r14);CPU - Current Context/pc(r15);CPU - Current Context/apsr;CPU/r0;CPU/r1;CPU/r2;CPU/r3;CPU/r4;CPU/r5;CPU/r6;CPU/r7;CPU/r8;CPU/r9;CPU/r10;CPU/r11;CPU/r12;CPU/sp(r13);CPU/lr(r14);CPU/pc(r15);CPU/xpsr;CPU/MSP;CPU/PSP;CPU/PRIMASK;CPU/BASEPRI;CPU/FAULTMASK;CPU/CONTROL;CPU/internal" binaryNodes="" asciiNodes="" openNodes="CPU - Current Context" name="01bsp_sweep_rx" decimalNodes="" octalNodes="" unsignedNodes=""/>
+  <RegisterWindow visibleNodes="CPU - Current Context/r0;CPU - Current Context/r1;CPU - Current Context/r2;CPU - Current Context/r3;CPU - Current Context/r4;CPU - Current Context/r5;CPU - Current Context/r6;CPU - Current Context/r7;CPU - Current Context/r8;CPU - Current Context/r9;CPU - Current Context/r10;CPU - Current Context/r11;CPU - Current Context/r12;CPU - Current Context/sp(r13);CPU - Current Context/lr(r14);CPU - Current Context/pc(r15);CPU - Current Context/apsr;CPU/r0;CPU/r1;CPU/r2;CPU/r3;CPU/r4;CPU/r5;CPU/r6;CPU/r7;CPU/r8;CPU/r9;CPU/r10;CPU/r11;CPU/r12;CPU/sp(r13);CPU/lr(r14);CPU/pc(r15);CPU/xpsr;CPU/MSP;CPU/PSP;CPU/PRIMASK;CPU/BASEPRI;CPU/FAULTMASK;CPU/CONTROL;CPU/internal" binaryNodes="" asciiNodes="" openNodes="CPU - Current Context" name="01bsp_radio_rx" decimalNodes="" octalNodes="" unsignedNodes=""/>
  </Register3>
  <Register4>
   <RegisterWindow visibleNodes="CPU - Current Context/r0;CPU - Current Context/r1;CPU - Current Context/r2;CPU - Current Context/r3;CPU - Current Context/r4;CPU - Current Context/r5;CPU - Current Context/r6;CPU - Current Context/r7;CPU - Current Context/r8;CPU - Current Context/r9;CPU - Current Context/r10;CPU - Current Context/r11;CPU - Current Context/r12;CPU - Current Context/sp(r13);CPU - Current Context/lr(r14);CPU - Current Context/pc(r15);CPU - Current Context/apsr;CPU/r0;CPU/r1;CPU/r2;CPU/r3;CPU/r4;CPU/r5;CPU/r6;CPU/r7;CPU/r8;CPU/r9;CPU/r10;CPU/r11;CPU/r12;CPU/sp(r13);CPU/lr(r14);CPU/pc(r15);CPU/xpsr;CPU/MSP;CPU/PSP;CPU/PRIMASK;CPU/BASEPRI;CPU/FAULTMASK;CPU/CONTROL;CPU/internal" binaryNodes="" asciiNodes="" openNodes="CPU - Current Context" name="01bsp_sweep_rx" decimalNodes="" octalNodes="" unsignedNodes=""/>
+  <RegisterWindow visibleNodes="CPU - Current Context/r0;CPU - Current Context/r1;CPU - Current Context/r2;CPU - Current Context/r3;CPU - Current Context/r4;CPU - Current Context/r5;CPU - Current Context/r6;CPU - Current Context/r7;CPU - Current Context/r8;CPU - Current Context/r9;CPU - Current Context/r10;CPU - Current Context/r11;CPU - Current Context/r12;CPU - Current Context/sp(r13);CPU - Current Context/lr(r14);CPU - Current Context/pc(r15);CPU - Current Context/apsr;CPU/r0;CPU/r1;CPU/r2;CPU/r3;CPU/r4;CPU/r5;CPU/r6;CPU/r7;CPU/r8;CPU/r9;CPU/r10;CPU/r11;CPU/r12;CPU/sp(r13);CPU/lr(r14);CPU/pc(r15);CPU/xpsr;CPU/MSP;CPU/PSP;CPU/PRIMASK;CPU/BASEPRI;CPU/FAULTMASK;CPU/CONTROL;CPU/internal" binaryNodes="" asciiNodes="" openNodes="CPU - Current Context" name="01bsp_radio_rx" decimalNodes="" octalNodes="" unsignedNodes=""/>
  </Register4>
  <Threads>
   <ThreadsWindow showLists=""/>
@@ -49,7 +56,11 @@
   <Trace enabled="Yes"/>
  </TraceWindow>
  <Watch1>
-  <Watches active="1" update="Never"/>
+  <Watches active="1" update="Never">
+   <Watchpoint expression="app_vars" name="app_vars" radix="-1" linenumber="318" filename="../../common/01bsp_radio_rx/01bsp_radio_rx.c"/>
+   <Watchpoint expression="cksum" name="cksum" radix="-1" linenumber="252" filename="../../common/01bsp_radio_rx/01bsp_radio_rx.c"/>
+   <Watchpoint expression="buffer" name="buffer" radix="-1" linenumber="255" filename="../../common/01bsp_radio_rx/01bsp_radio_rx.c"/>
+  </Watches>
  </Watch1>
  <Watch2>
   <Watches active="0" update="Never"/>
@@ -61,12 +72,14 @@
   <Watches active="0" update="Never"/>
  </Watch4>
  <Files>
-  <SessionOpenFile windowGroup="DockEditLeft" x="41" y="212" useTextEdit="1" openedFrom="E:/scum/openwsn-fw_develop/bsp/boards/nrf52840/board.c" useBinaryEdit="0" left="0" path="../../common/01bsp_radio_rx/01bsp_radio_rx.c" selected="1" top="153" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="16" y="3" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../inc/check_config.h" selected="0" top="0" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="47" y="60" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="app_config.h" selected="0" top="51" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="196" useTextEdit="1" openedFrom="E:/scum/openwsn-fw_develop/projects/common/01bsp_radio_rx/01bsp_radio_rx.c" useBinaryEdit="0" left="0" path="../../../bsp/boards/nrf52840/radio.c" selected="0" top="183" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="19" y="139" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../bsp/boards/nrf52840/uart.c" selected="0" top="138" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="13" y="47" useTextEdit="1" openedFrom="" useBinaryEdit="0" left="0" path="../../../bsp/boards/nrf52840/board.c" selected="0" top="42" codecName=""/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="25" y="73" useTextEdit="1" openedFrom="E:/scum/openwsn-fw_develop/bsp/boards/nrf52840/board.c" path="../../common/01bsp_radio_rx/01bsp_radio_rx.c" left="0" selected="1" top="55" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="16" y="3" useTextEdit="1" path="../../../inc/check_config.h" left="0" top="0" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="47" y="60" useTextEdit="1" path="app_config.h" left="0" top="45" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="490" useTextEdit="1" openedFrom="E:/scum/openwsn-fw_develop/projects/common/01bsp_radio_rx/01bsp_radio_rx.c" path="../../../bsp/boards/nrf52840/radio.c" left="0" top="470" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="19" y="139" useTextEdit="1" path="../../../bsp/boards/nrf52840/uart.c" left="0" top="138" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="59" y="60" useTextEdit="1" openedFrom="E:/scum/openwsn-fw_develop/projects/common/01bsp_radio_rx/01bsp_radio_rx.c" path="../../../bsp/boards/nrf52840/board.c" left="0" top="46" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="396" useTextEdit="1" path="../../../bsp/boards/nrf52840/sdk/components/toolchain/cmsis/include/cmsis_gcc.h" left="0" top="396" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="360" useTextEdit="1" path="../../../bsp/boards/nrf52840/sdk/components/libraries/pwr_mgmt/nrf_pwr_mgmt.c" left="0" top="347" codecName="Default"/>
  </Files>
- <ARMCrossStudioWindow activeProject="01bsp_radio" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="E:/scum/openwsn-fw_develop/projects/common/01bsp_radio_rx" debugSearchPath="" autoConnectCapabilities="3711"/>
+ <EMStudioWindow activeProject="01bsp_radio_rx" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3711"/>
 </session>

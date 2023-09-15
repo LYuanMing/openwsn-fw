@@ -60,14 +60,14 @@
   <Watches active="0" update="Never"/>
  </Watch4>
  <Files>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="119" useTextEdit="1" path="../../common/01bsp_radio_tx/01bsp_radio_tx.c" left="0" selected="1" top="106" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="135" useTextEdit="1" path="../../common/01bsp_radio_tx/01bsp_radio_tx.c" left="0" selected="1" top="114" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="46" useTextEdit="1" openedFrom="E:/scum/openwsn-fw_develop/projects/common/01bsp_radio_tx/01bsp_radio_tx.c" path="../../../bsp/boards/nrf52840/board.c" left="0" top="33" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="130" y="129" useTextEdit="1" path="../../../bsp/boards/nrf52840/board_info.h" left="24" top="109" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" path="../../../bsp/boards/nrf52840/uart.c" left="0" top="0" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="5" y="217" useTextEdit="1" openedFrom="E:/scum/openwsn-fw_develop/projects/common/01bsp_radio_tx/01bsp_radio_tx.c" path="../../../bsp/boards/nrf52840/radio.c" left="0" top="216" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="2" y="47" useTextEdit="1" openedFrom="E:/scum/openwsn-fw_develop/bsp/boards/nrf52840/radio.c" path="../../../bsp/boards/radio.h" left="0" top="28" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="18" y="18" useTextEdit="1" openedFrom="E:/scum/openwsn-fw_develop/projects/common/01bsp_radio_tx/01bsp_radio_tx.c" path="../../../bsp/boards/radio.h" left="0" top="5" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" path="app_config.h" left="0" top="45" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="396" useTextEdit="1" path="../../../bsp/boards/nrf52840/sdk/components/toolchain/cmsis/include/cmsis_gcc.h" left="0" top="383" codecName="Default"/>
  </Files>
- <EMStudioWindow activeProject="01bsp_sweep_rx" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3199"/>
+ <EMStudioWindow activeProject="01bsp_radio_tx" fileDialogDefaultFilter="*.c" autoConnectTarget="J-Link" buildConfiguration="Debug" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="" debugSearchPath="" autoConnectCapabilities="3711"/>
 </session>

@@ -71,8 +71,8 @@ len=17  num=84  rssi=-81  lqi=108 crc=1
 //#include "sctimer.h"
 
 //=========================== defines =========================================
-
-#define LENGTH_PACKET        125+LENGTH_CRC // maximum length is 127 bytes
+#define LEN_WITHOUT_CRC 7
+#define LENGTH_PACKET        LEN_WITHOUT_CRC+LENGTH_CRC // maximum length is 127 bytes
 #define CHANNEL              11             // 24ghz: 11 = 2.405GHz, subghz: 11 = 865.325 in  FSK operating mode #1
 #define LENGTH_SERIAL_FRAME  127              // length of the serial frame
 
@@ -86,7 +86,7 @@ typedef struct {
 
 app_dbg_t app_dbg;
 
-char buffer[] = "00.00.00\r\n";
+char buffer[6] = "000\r\n";
 
 typedef struct {
     // rx packet
@@ -120,6 +120,7 @@ void cb_uartTxDone(void);
 uint8_t cb_uartRxCb(void);
 void send_string(const char* str);
 
+
 //=========================== main ============================================
 
 /**
@@ -142,8 +143,8 @@ int mote_main(void) {
     // setup UART
     uart_setCallbacks(cb_uartTxDone,cb_uartRxCb);
     uart_enableInterrupts();
-    length = strlen("uart is ok!");
-    send_string("uart is ok!");
+    length = strlen("uart is ok!\r\n");
+    send_string("uart is ok!\r\n");
 
 
     // prepare radio
@@ -171,9 +172,9 @@ int mote_main(void) {
 
         // led
         leds_error_on();
-        length = 9;
+        length = 8;
         send_string("setting: ");
-        length = 10;
+        length = 5;
         send_string(buffer);
         // format frame to send over serial port
         //i = 0;
@@ -245,16 +246,15 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp) {
     if (app_vars.rxpk_len>LENGTH_PACKET){
         expectedFrame = FALSE;
     } else {
-        if(app_vars.rxpk_buf[0] != 'P')
+        uint8_t cksum = 0;
+	for(i = 0; i < LEN_WITHOUT_CRC; i++)
+            cksum += app_vars.rxpk_buf[i];
+        if(cksum != 0)
             expectedFrame = FALSE;
         else {
-            buffer[0] = app_vars.rxpk_buf[1];
-            buffer[1] = app_vars.rxpk_buf[2];
-            buffer[3] = app_vars.rxpk_buf[3];
-            buffer[4] = app_vars.rxpk_buf[4];
-            buffer[6] = app_vars.rxpk_buf[5];
-            buffer[7] = app_vars.rxpk_buf[6];
-
+            buffer[0] = app_vars.rxpk_buf[0];
+            buffer[1] = app_vars.rxpk_buf[1];
+            buffer[2] = app_vars.rxpk_buf[2];
         }
     }
 
@@ -306,6 +306,7 @@ uint8_t cb_uartRxCb(void) {
     uart_clearRxInterrupts();
     return 1;
 }
+
 
 void send_string(const char* str)
 {

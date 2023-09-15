@@ -21,10 +21,10 @@ remainder of the packet contains an incrementing bytes.
 #include "uart.h"
 
 //=========================== defines =========================================
-
-#define LENGTH_PACKET   20+LENGTH_CRC // maximum length is 127 bytes
+#define LEN_WITHOUT_CRC 20
+#define LENGTH_PACKET   LEN_WITHOUT_CRC+LENGTH_CRC // maximum length is 127 bytes
 #define CHANNEL         11            // 24ghz: 11 = 2.405GHz, subghz: 11 = 865.325 in  FSK operating mode #1
-#define TIMER_PERIOD    819    // (32768>>1) = 500ms @ 32kHz
+#define TIMER_PERIOD    490    // (32768>>1) = 500ms @ 32kHz
 
 //=========================== variables =======================================
 
@@ -59,6 +59,8 @@ void cb_endFrame(PORT_TIMER_WIDTH timestamp);
 void send_string(const char* str);
 void cb_uartTxDone(void);
 uint8_t cb_uartRxCb(void);
+
+static inline uint8_t check_sum(const uint8_t* buffer, int size);
 
 uint8_t stringToSend[256] = {0};
 uint16_t length = 0;
@@ -111,13 +113,29 @@ int mote_main(void) {
 
         // prepare packet
         app_vars.txpk_num++;
-        app_vars.txpk_len           = sizeof(app_vars.txpk_buf);
-        app_vars.txpk_buf[0] = 'p';
-        app_vars.txpk_buf[1] = 'r';
-        app_vars.txpk_buf[2] = 'o';
-        app_vars.txpk_buf[3] = 'b';
-        app_vars.txpk_buf[4] = CHANNEL;
-
+        app_vars.txpk_len           = LENGTH_PACKET;
+        app_vars.txpk_buf[0] = 'e';
+        app_vars.txpk_buf[1] = 'e';
+        app_vars.txpk_buf[2] = 'e';
+        app_vars.txpk_buf[3] = 'e';
+        app_vars.txpk_buf[4] = 'e';
+        app_vars.txpk_buf[5] = 'e';
+        app_vars.txpk_buf[6] = 'e';
+        app_vars.txpk_buf[7] = 'e';
+        app_vars.txpk_buf[8] = 'e';
+        app_vars.txpk_buf[9] = 'e';
+        app_vars.txpk_buf[10] = 'e';
+        app_vars.txpk_buf[11] = 'e';
+        app_vars.txpk_buf[12] = 'e';
+        app_vars.txpk_buf[13] = 'e';
+        app_vars.txpk_buf[14] = 'e';
+        app_vars.txpk_buf[15] = 'e';
+        app_vars.txpk_buf[16] = 'e';
+        app_vars.txpk_buf[17] = 'e';
+        app_vars.txpk_buf[18] = 'e';
+        app_vars.txpk_buf[LEN_WITHOUT_CRC - 1] = 0;
+        uint8_t sum = check_sum(&app_vars.txpk_buf, LEN_WITHOUT_CRC);
+        app_vars.txpk_buf[LEN_WITHOUT_CRC - 1] = sum;
         //for (i=0;i<app_vars.txpk_len;i++) {
         //    app_vars.txpk_buf[i] = 'a' + i;
         //}
@@ -183,6 +201,17 @@ uint8_t cb_uartRxCb(void) {
    uart_writeByte(byte);
    
    return 0;
+}
+
+static inline uint8_t check_sum(const uint8_t* buffer, int size)
+{
+    uint8_t sum = 0;
+    while(size > 1) {
+        sum += *buffer++;
+        size -= sizeof(uint8_t);
+    }
+
+    return (~sum) + 1;
 }
 
 void send_string(const char* str)
