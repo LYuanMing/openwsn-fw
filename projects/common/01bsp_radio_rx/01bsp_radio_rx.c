@@ -71,7 +71,7 @@ len=17  num=84  rssi=-81  lqi=108 crc=1
 //#include "sctimer.h"
 
 //=========================== defines =========================================
-#define LEN_WITHOUT_CRC 7
+#define LEN_WITHOUT_CRC 5
 #define LENGTH_PACKET        LEN_WITHOUT_CRC+LENGTH_CRC // maximum length is 127 bytes
 #define CHANNEL              11             // 24ghz: 11 = 2.405GHz, subghz: 11 = 865.325 in  FSK operating mode #1
 #define LENGTH_SERIAL_FRAME  127              // length of the serial frame
