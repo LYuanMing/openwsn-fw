@@ -1070,7 +1070,8 @@ if __name__ == "__main__":
         'ieee_address': 0,
         'bootloader_active_high': False,
         'bootloader_invert_lines': False,
-        'disable-bootloader': 0
+        'disable-bootloader': 0,
+        'reset_only': False
     }
 
     # http://www.python.org/doc/2.5.2/lib/module-getopt.html
