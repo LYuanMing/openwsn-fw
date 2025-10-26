@@ -14,12 +14,13 @@
 #include "icmpv6rpl.h"
 #include "idmanager.h"
 #include "openrandom.h"
-
+#include "nrf52840.h"
 #include "msf.h"
 
 //=========================== defines =========================================
 
 #define UINJECT_TRAFFIC_RATE 1 ///> the value X indicates 1 packet/X minutes
+
 
 //=========================== variables =======================================
 
@@ -74,7 +75,14 @@ void uinject_init(void) {
 
 //=========================== private =========================================
 
-
+void get_temperature(int32_t* result)
+{
+  NRF_TEMP->EVENTS_DATARDY = 0;
+  NRF_TEMP->TASKS_START = 1;
+  while (NRF_TEMP->EVENTS_DATARDY == 0) {}
+  *result = NRF_TEMP->TEMP;
+  return;
+}
 
 void uinject_sock_handler(sock_udp_t *sock, sock_async_flags_t type, void *arg) {
     (void) arg;
@@ -122,7 +130,6 @@ void _uinject_task_cb(void) {
     uint8_t asnArray[5];
     open_addr_t parentNeighbor;
     bool foundNeighbor;
-    openserial_printf("uinject task callback\n\n");
     // don't run if not synch
     if (ieee154e_isSynch() == FALSE) {
         return;
@@ -174,6 +181,12 @@ void _uinject_task_cb(void) {
     // add 16b addr
     payload[len++] = (uint8_t)(idmanager_getMyID(ADDR_16B)->addr_16b[1]);
     payload[len++] = (uint8_t)(idmanager_getMyID(ADDR_16B)->addr_16b[0]);
+    int32_t temp;
+    get_temperature(&temp);
+    payload[len++] = (uint8_t)temp & 0xff;
+    payload[len++] = (uint8_t)((temp & 0xff00) >> 8);
+    payload[len++] = (uint8_t)((temp & 0xff0000) >> 16);
+    payload[len++] = (uint8_t)((temp & 0xff000000) >> 24);
     // add ticks info
     uint32_t ticksOn;
     uint32_t ticksInTotal;
