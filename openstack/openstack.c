@@ -55,7 +55,11 @@ void openstack_init(void) {
 
     //===== drivers
     opentimers_init();
+#if SUPER_LOW_POWER
+
+#else
     openserial_init();
+#endif
 
     //===== stack
     //-- cross-layer

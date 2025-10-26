@@ -122,7 +122,7 @@ void _uinject_task_cb(void) {
     uint8_t asnArray[5];
     open_addr_t parentNeighbor;
     bool foundNeighbor;
-
+    openserial_printf("uinject task callback\n\n");
     // don't run if not synch
     if (ieee154e_isSynch() == FALSE) {
         return;

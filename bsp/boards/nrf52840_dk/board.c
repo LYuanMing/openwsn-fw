@@ -22,7 +22,6 @@
 //=========================== prototypes ======================================
 
 void enable_dcdc(void);
-
 //=========================== main ============================================
 
 extern int mote_main(void);
@@ -31,24 +30,29 @@ int main(void) {
     return mote_main();
 }
 
-
 //=========================== public ==========================================
 
 void board_init(void) {
 
-    // start hfclock
+    //// start hfclock
     NRF_CLOCK->EVENTS_HFCLKSTARTED = 0;
     NRF_CLOCK->TASKS_HFCLKSTART    = 1;
     while (NRF_CLOCK->EVENTS_HFCLKSTARTED == 0);
 
+#if SUPER_LOW_POWER
+
+#else
     leds_init();
     debugpins_init();
     uart_init();
+#endif
     sctimer_init();
     radio_init();
 
+#if SUPER_LOW_POWER
+#else
     i2c_init();
-
+#endif
     // configure dcdc
     enable_dcdc();
 }

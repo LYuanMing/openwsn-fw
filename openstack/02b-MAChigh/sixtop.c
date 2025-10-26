@@ -657,9 +657,13 @@ void sixtop_timeout_timer_cb(opentimers_id_t id) {
 //======= EB/KA task
 
 void timer_sixtop_sendEb_fired(void) {
+#ifdef FIXED_EB_PERIOD
+    sixtop_sendEB(); 
+#else
     if (openrandom_get16b() < (0xffff / EB_PORTION)) {
         sixtop_sendEB();
     }
+#endif
 }
 
 /**

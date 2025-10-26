@@ -57,42 +57,32 @@ bool topology_isAcceptablePacket(ieee802154_header_iht* ieee802514_header) {
    
    returnVal=FALSE;
    switch (idmanager_getMyID(ADDR_64B)->addr_64b[7]) {
-      case 0x57:
+      // 79 is the root, 61 is measured node, 04, eb and 01 are the other node
+      case 0x79:
+          if (
+              ieee802514_header->src.addr_64b[7] == 0x61
+          ) {
+              returnVal = TRUE;
+          }
+      case 0x61:
+          if (
+              ieee802514_header->src.addr_64b[7] == 0x79 ||
+              ieee802514_header->src.addr_64b[7] == 0x01 || 
+              ieee802514_header->src.addr_64b[7] == 0x04 ||
+              ieee802514_header->src.addr_64b[7] == 0xeb 
+          ) {
+              returnVal = TRUE;
+          }
+      case 0x04:
+      case 0xeb:
+      case 0x01:
          if (
-               ieee802514_header->src.addr_64b[7]==0x05
+               ieee802514_header->src.addr_64b[7] == 0x01 || 
+               ieee802514_header->src.addr_64b[7] == 0x04 || 
+               ieee802514_header->src.addr_64b[7] == 0x61 ||
+               ieee802514_header->src.addr_64b[7] == 0xeb 
             ) {
-            returnVal=TRUE;
-         }
-         break;
-      case 0x05:
-         if (
-               ieee802514_header->src.addr_64b[7]==0x57 ||
-               ieee802514_header->src.addr_64b[7]==0x16
-            ) {
-            returnVal=TRUE;
-         }
-         break;
-      case 0x16:
-         if (
-               ieee802514_header->src.addr_64b[7]==0x05 ||
-               ieee802514_header->src.addr_64b[7]==0x5e
-            ) {
-            returnVal=TRUE;
-         }
-         break;
-      case 0x5e:
-         if (
-               ieee802514_header->src.addr_64b[7]==0x16 ||
-               ieee802514_header->src.addr_64b[7]==0xdd
-            ) {
-            returnVal=TRUE;
-         }
-         break;
-      case 0xdd:
-         if (
-               ieee802514_header->src.addr_64b[7]==0x5e
-            ) {
-            returnVal=TRUE;
+              returnVal = TRUE;
          }
          break;
    }

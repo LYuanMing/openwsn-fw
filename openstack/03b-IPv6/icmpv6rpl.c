@@ -17,7 +17,7 @@
 //=========================== definition ======================================
 
 #define DIO_PORTION 10
-#define DAO_PORTION 60
+#define DAO_PORTION 20
 
 //=========================== variables =======================================
 
@@ -656,10 +656,13 @@ void icmpv6rpl_timer_DIO_cb(opentimers_id_t id) {
 \note This function is executed in task context, called by the scheduler.
 */
 void icmpv6rpl_timer_DIO_task(void) {
-
+#ifdef  FIXED_DIO_PERIOD
+    sendDIO();
+#else
     if (openrandom_get16b() < (0xffff / DIO_PORTION)) {
         sendDIO();
     }
+#endif
 }
 
 /**
@@ -823,10 +826,13 @@ void icmpv6rpl_timer_DAO_cb(opentimers_id_t id) {
 \note This function is executed in task context, called by the scheduler.
 */
 void icmpv6rpl_timer_DAO_task(void) {
-
+#ifdef  FIXED_DAO_PERIOD
+    sendDAO();
+#else
     if (openrandom_get16b() < (0xffff / DAO_PORTION)) {
         sendDAO();
     }
+#endif
 }
 
 /**

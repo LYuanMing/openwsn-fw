@@ -204,8 +204,10 @@ int8_t radio_getFrequencyOffset(void){
     return 0; 
 }
 
-
 void radio_rfOn(void) {
+#if  SUPER_LOW_POWER
+    hfclock_start();
+#endif
     // power on radio
     NRF_RADIO->POWER = ((uint32_t)(1)) << 0;
 
@@ -226,6 +228,9 @@ void radio_rfOff(void) {
 
     leds_radio_off();
     debugpins_radio_clr();
+#if  SUPER_LOW_POWER
+    hfclock_stop();
+#endif
 
     radio_vars.state  = RADIOSTATE_RFOFF;
 }
@@ -265,7 +270,16 @@ void radio_ble_loadPacket(uint8_t* packet, uint16_t len) {
 
 
 void radio_txEnable(void) {
+#if  SUPER_LOW_POWER
+    hfclock_start();
+    
+    NRF_RADIO->EVENTS_DISABLED = 0;
 
+    // stop radio
+    NRF_RADIO->TASKS_DISABLE = (uint32_t)(1);
+
+    while(NRF_RADIO->EVENTS_DISABLED==0);
+#endif
     radio_vars.state  = RADIOSTATE_ENABLING_TX;
 
     NRF_RADIO->EVENTS_READY = (uint32_t)0;
@@ -292,18 +306,35 @@ void radio_txNow(void) {
 void radio_rxEnable(void) {
 
     radio_vars.state = RADIOSTATE_ENABLING_RX;
+#if  SUPER_LOW_POWER
+    hfclock_start();
 
+    NRF_RADIO->EVENTS_DISABLED = 0;
+
+    // stop radio
+    NRF_RADIO->TASKS_DISABLE = (uint32_t)(1);
+
+    while(NRF_RADIO->EVENTS_DISABLED==0);
+
+    NRF_RADIO->EVENTS_READY = (uint32_t)0;
+
+    NRF_RADIO->TASKS_RXEN  = (uint32_t)1;
+
+    while(NRF_RADIO->EVENTS_READY==0);
+#else
     if (NRF_RADIO->STATE != STATE_RX) {
 
         // turn off radio first
         radio_rfOff();
-
+            
         NRF_RADIO->EVENTS_READY = (uint32_t)0;
 
         NRF_RADIO->TASKS_RXEN  = (uint32_t)1;
 
         while(NRF_RADIO->EVENTS_READY==0);
     }
+#endif
+
 }
 
 
