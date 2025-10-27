@@ -98,12 +98,12 @@ int mote_main(void) {
     // 0x5: +/-4g
     // 0x8: +/-8g 
     // 0xc: +/-16g
-    bmx160_acc_range(0x8);
+    bmx160_acc_range(0xc);
     // 0x0: +/-2000°/s = 16.4LSB/°/s
     // 0x1: +/-1000°/s = 32.8LSB/°/s
     // 0x2: +/-500°/s  = 131.2LSB/°/s
     // 0x3: +/-250°/s  = 262.4LSB/°/s
-    bmx160_gyr_range(0x1);
+    bmx160_gyr_range(0x3);
     // ToDo
     //bmx160_mag_if();
 
