@@ -13,11 +13,7 @@
     <ProgramSection alignment="4" keep="Yes" load="Yes" name=".log_filter_data"  inputsections="*(SORT(.log_filter_data*))" runin=".log_filter_data_run"/>
     <ProgramSection alignment="4" load="Yes" name=".dtors" />
     <ProgramSection alignment="4" load="Yes" name=".ctors" />
-<<<<<<< HEAD
     <ProgramSection alignment="4" load="Yes" name=".rodata" />
-=======
-    <ProgramSection alignment="4" load="Yes" name=".rodata"/>
->>>>>>> bf511897f8d3168a11bc184b0329fa5f71952ad9
     <ProgramSection alignment="4" load="Yes" name=".ARM.exidx" address_symbol="__exidx_start" end_symbol="__exidx_end" />
     <ProgramSection alignment="4" load="Yes" runin=".fast_run" name=".fast" />
     <ProgramSection alignment="4" load="Yes" runin=".data_run" name=".data" />
