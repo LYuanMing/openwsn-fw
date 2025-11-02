@@ -31,7 +31,8 @@ end of frame event), it will turn on its error LED.
 #define TIMER_PERIOD    (0xffff>>4)    ///< 0xffff = 2s@32kHz
 #define ID              0x99           ///< byte sent in the packets
 
-uint8_t stringToSend[]  = "+002 Ptest.24.00.12.-010\n";
+uint8_t stringToSend[]  = "000 Yuanming LUO, RSSI: -010\n";
+uint8_t fixString[] = "Yuanming LUO, RSSI: ";
 
 //=========================== variables =======================================
 
@@ -90,7 +91,7 @@ uint8_t  cb_uart_rx(void);
 int mote_main(void) {
     uint8_t i;
 
-    uint8_t freq_offset;
+    uint8_t count=0;
     uint8_t sign;
     uint8_t read;
 
@@ -190,28 +191,15 @@ int mote_main(void) {
                             &app_vars.rxpk_crc
                         );
 
-                        freq_offset = radio_getFrequencyOffset();
-                        sign = (freq_offset & 0x80) >> 7;
-                        if (sign){
-                            read = 0xff - (uint8_t)(freq_offset) + 1;
-                        } else {
-                            read = freq_offset;
-                        }
-
+                        count += 1;
                         i = 0;
-                        if (sign) {
-                            stringToSend[i++] = '-';
-                        } else {
-                            stringToSend[i++] = '+';
-                        }
-                        stringToSend[i++] = '0'+read/100;
-                        stringToSend[i++] = '0'+read/10;
-                        stringToSend[i++] = '0'+read%10;
+
+                        stringToSend[i++] = '0'+count/100;
+                        stringToSend[i++] = '0'+((count%100)/10);
+                        stringToSend[i++] = '0'+count%10;
                         stringToSend[i++] = ' ';
 
-                        stringToSend[i++] = 'P';
-                        memcpy(&stringToSend[i],&app_vars.packet[0],14);
-                        i += 14;
+                        i += sizeof(fixString);
 
                         sign = (app_vars.rxpk_rssi & 0x80) >> 7;
                         if (sign){
@@ -236,7 +224,7 @@ int mote_main(void) {
                         if (app_vars.uartDone == 1) {
                             app_vars.uartDone              = 0;
                             app_vars.uart_lastTxByteIndex  = 0;
-                            uart_writeByte(stringToSend[app_vars.uart_lastTxByteIndex]);
+                            uart_writeByte(app_vars.packet[app_vars.uart_lastTxByteIndex]);
                         }
 
                         // led
@@ -268,19 +256,14 @@ int mote_main(void) {
                     radio_rfOff();
 
                     // prepare packet
-                    app_vars.packet_len = sizeof(app_vars.packet);
+                    app_vars.packet_len = sizeof(stringToSend) <= sizeof(app_vars.packet)?sizeof(stringToSend):sizeof(app_vars.packet);
                     i = 0;
-                    app_vars.packet[i++] = 't';
-                    app_vars.packet[i++] = 'e';
-                    app_vars.packet[i++] = 's';
-                    app_vars.packet[i++] = 't';
-                    app_vars.packet[i++] = CHANNEL;
-                    while (i<app_vars.packet_len) {
-                        app_vars.packet[i++] = ID;
+                    for(int j = 0;j < app_vars.packet_len;j++) {
+                      app_vars.packet[j]= stringToSend[j];
                     }
-
+  
                     // start transmitting packet
-                    radio_loadPacket(app_vars.packet,LEN_PKT_TO_SEND);
+                    radio_loadPacket(app_vars.packet,app_vars.packet_len);
                     radio_txEnable();
                     radio_txNow();
 
