@@ -199,7 +199,7 @@ int mote_main(void) {
                         stringToSend[i++] = '0'+count%10;
                         stringToSend[i++] = ' ';
 
-                        i += sizeof(fixString);
+                        i += (sizeof(fixString) - 1);
 
                         sign = (app_vars.rxpk_rssi & 0x80) >> 7;
                         if (sign){
