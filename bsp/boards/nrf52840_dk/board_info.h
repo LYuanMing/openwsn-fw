@@ -147,6 +147,11 @@
 
 #define NUMSENSORS 2
 
+//===== board initialization mode 
+#ifndef SUPER_LOW_POWER
+#define SUPER_LOW_POWER (0)
+#endif
+
 //=========================== typedef  ========================================
 
 //=========================== variables =======================================

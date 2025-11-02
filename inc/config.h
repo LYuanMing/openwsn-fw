@@ -289,7 +289,7 @@
  *
  */
 #ifndef OPENWSN_FORCETOPOLOGY_C
-#define OPENWSN_FORCETOPOLOGY_C (0)
+#define OPENWSN_FORCETOPOLOGY_C (1)
 #endif
 
 
@@ -350,7 +350,7 @@
  *
  */
 #ifndef IEEE802154E_SINGLE_CHANNEL
-#define IEEE802154E_SINGLE_CHANNEL      0
+#define IEEE802154E_SINGLE_CHANNEL      11
 #endif
 
 /**
@@ -363,6 +363,18 @@
 #ifndef PACKETQUEUE_LENGTH
 #define PACKETQUEUE_LENGTH              20
 #endif
+
+
+/**
+ * \def SKIPSLOT
+ *
+ * Set whether the mote skip until active slot.
+ *
+ */
+#ifndef SLOPSKIP
+#define SLOTSKIP (0)
+#endif
+
 
 /**
  * \def DAGROOT
@@ -405,7 +417,7 @@
  *
  */
 #ifndef BOARD_OPENSERIAL_PRINTF
-#define BOARD_OPENSERIAL_PRINTF (0)
+#define BOARD_OPENSERIAL_PRINTF (1)
 #endif
 
 

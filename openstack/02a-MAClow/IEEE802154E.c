@@ -969,10 +969,10 @@ port_INLINE void activity_ti1ORri1(void) {
         ieee154e_vars.nextActiveSlotOffset = schedule_getNextActiveSlotOffset();
         if (idmanager_getIsSlotSkip() && idmanager_getIsDAGroot() == FALSE) {
             if (ieee154e_vars.nextActiveSlotOffset > ieee154e_vars.slotOffset) {
-                ieee154e_vars.numOfSleepSlots = ieee154e_vars.nextActiveSlotOffset - ieee154e_vars.slotOffset;
+                ieee154e_vars.numOfSleepSlots = (ieee154e_vars.nextActiveSlotOffset - ieee154e_vars.slotOffset);
             } else {
                 ieee154e_vars.numOfSleepSlots =
-                        schedule_getFrameLength() + ieee154e_vars.nextActiveSlotOffset - ieee154e_vars.slotOffset;
+                        (schedule_getFrameLength() + ieee154e_vars.nextActiveSlotOffset - ieee154e_vars.slotOffset);
             }
 
             opentimers_scheduleAbsolute(

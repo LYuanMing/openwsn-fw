@@ -20,8 +20,11 @@ void idmanager_init(void) {
     // reset local variables
     memset(&idmanager_vars, 0, sizeof(idmanager_vars_t));
     // this is used to not wakeup in non-activeslot
+#if SLOTSKIP
+    idmanager_vars.slotSkip = TRUE;
+#else
     idmanager_vars.slotSkip = FALSE;
-
+#endif
     // isDAGroot
 #if DAGROOT
     idmanager_vars.isDAGroot = TRUE;
