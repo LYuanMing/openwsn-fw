@@ -56,7 +56,9 @@
     <configuration
       Name="Debug"
       link_linker_script_file="../../bsp/boards/nrf52832/sdk/nrf52832_xxaa.ld"
-      link_use_linker_script_file="No" />
+      link_use_linker_script_file="No"
+      linker_section_placement_file="$(ProjectDir)/flash_placement.xml"
+      target_reset_script="" />
     <folder Name="application">
       <file file_name="../common/01bsp_leds/01bsp_leds.c" />
     </folder>
@@ -134,8 +136,14 @@
       macros="DeviceHeaderFile=$(PackagesDir)/nRF/Device/Include/nrf.h;DeviceSystemFile=$(PackagesDir)/nRF/Device/Source/system_nrf52.c;DeviceVectorsFile=$(PackagesDir)/nRF/Source/nrf52_Vectors.s;DeviceFamily=nRF;Target=nRF52832_xxAA"
       project_directory=""
       project_type="Executable"
-      target_reset_script="Reset();" />
-    <configuration Name="Debug" arm_linker_variant="GNU" />
+      target_reset_script="" />
+    <configuration
+      Name="Debug"
+      arm_linker_variant="GNU"
+      c_preprocessor_definitions="SUPER_LOW_POWER"
+      c_user_include_directories=""
+      linker_section_placement_file="$(ProjectDir)/flash_placement.xml"
+      target_reset_script="TargetInterface.resetAndStop()" />
     <folder Name="application">
       <file file_name="../common/01bsp_radio/01bsp_radio.c" />
     </folder>
@@ -209,6 +217,7 @@
       link_linker_script_file="$(PackagesDir)/nRF/Scripts/nRF_Flash_Variant1.icf"
       linker_memory_map_file="$(PackagesDir)/nRF/XML/nRF52832_xxAA_MemoryMap.xml"
       linker_output_format="hex"
+      linker_section_placement_file="$(ProjectDir)/flash_placement.xml"
       macros="DeviceHeaderFile=$(PackagesDir)/nRF/Device/Include/nrf.h;DeviceSystemFile=$(PackagesDir)/nRF/Device/Source/system_nrf52.c;DeviceVectorsFile=$(PackagesDir)/nRF/Source/nrf52_Vectors.s;DeviceFamily=nRF;Target=nRF52832_xxAA"
       project_directory=""
       project_type="Executable"
@@ -257,6 +266,9 @@
       <file file_name="../../inc/config.h" />
       <file file_name="../../inc/opendefs.h" />
     </folder>
+    <configuration
+      Name="Debug"
+      target_reset_script="TargetInterface.resetAndStop()" />
   </project>
   <project Name="01bsp_uart">
     <configuration

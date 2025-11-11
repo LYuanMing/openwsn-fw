@@ -56,8 +56,9 @@ void sctimer_init(void) {
     NRF_RTC0->PRESCALER         = 0;
 
     // configure the source
+
+    // external LFCLK not available for nRF52
     NRF_CLOCK->LFCLKSRC = (CLOCK_LFCLKSRC_SRC_RC<<CLOCK_LFCLKSRC_SRC_Pos);
-    //NRF_CLOCK->LFCLKSRC = (CLOCK_LFCLKSRC_SRC_Xtal<<CLOCK_LFCLKSRC_SRC_Pos);
 
     // start LFCLK
     NRF_CLOCK->EVENTS_LFCLKSTARTED = 0;

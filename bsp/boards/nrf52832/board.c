@@ -34,22 +34,18 @@ int main(void) {
 
 void board_init(void) {
 
-    //// start hfclock
-    NRF_CLOCK->EVENTS_HFCLKSTARTED = 0;
-    NRF_CLOCK->TASKS_HFCLKSTART    = 1;
-    while (NRF_CLOCK->EVENTS_HFCLKSTARTED == 0);
     leds_init();
+    debugpins_init();
 
-#if SUPER_LOW_POWER
+#ifdef SUPER_LOW_POWER
 
 #else
-    debugpins_init();
     uart_init();
 #endif
     sctimer_init();
     radio_init();
 
-#if SUPER_LOW_POWER
+#ifdef SUPER_LOW_POWER
 #else
     i2c_init();
 #endif

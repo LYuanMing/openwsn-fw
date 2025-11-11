@@ -40,8 +40,8 @@ void cb_compare(void);
 /**
 \brief The program starts executing here.
 */
-int mote_main(void) {  
-   
+int mote_main(void) {
+
    // initialize board. 
    board_init();
    

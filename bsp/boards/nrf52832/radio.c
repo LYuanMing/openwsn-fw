@@ -1,20 +1,19 @@
 /**
- * brief Nordic nRF52840-specific definition of the "radio" bsp module. 
- *
- * Authors: Tamas Harczos (1, tamas.harczos@imms.de) and Adam Sedmak (2, adam.sedmak@gmail.com)
- * Company: (1) Institut fuer Mikroelektronik- und Mechatronik-Systeme gemeinnuetzige GmbH (IMMS GmbH)
- *          (2) Faculty of Electronics and Computing, Zagreb, Croatia
- *    Date: June 2018
+\brief nRF52832 definition of the "radio" bsp module.
+
+\author: Tengfei Chang <tengfei.chang@inria.fr> August 2020
 */
 
-#include "board_info.h"
-#include "sctimer.h"
+#include "nrf52.h"
+#include "nrf52_bitfields.h"
+#include "board.h"
+#include "radio.h"
 #include "debugpins.h"
 #include "leds.h"
-#include "radio.h"
-
 
 //=========================== defines =========================================
+
+#define RADIO_POWER_POWER_POS       0
 
 #define STATE_DISABLED              0
 #define STATE_RXRU                  1
@@ -26,175 +25,124 @@
 #define STATE_TX                    11
 #define STATE_TXDIABLE              12
 
-/* For calculating frequency */
-#define FREQUENCY_OFFSET  10
-#define FREQUENCY_STEP    5
-
-#define SFD_OCTET                 (0xA7)      ///< start of frame delimiter of IEEE 802.15.4
-#define MAX_PACKET_SIZE           (127)       ///< maximal size of radio packet (one more byte at the beginning needed to store the length)
+#define MAX_PACKET_SIZE           (255)       ///< maximal size of radio packet (one more byte at the beginning needed to store the length)
 #define CRC_POLYNOMIAL            (0x11021)   ///< polynomial used for CRC calculation in 802.15.4 frames (x^16 + x^12 + x^5 + 1)
-
-#define WAIT_FOR_RADIO_DISABLE    (0)         ///< whether the driver shall wait until the radio is disabled upon calling radio_rfOff()
-#define WAIT_FOR_RADIO_ENABLE     (1)         ///< whether the driver shall wait until the radio is enabled upon calling radio_txEnable() or radio_rxEnable()
 
 #define RADIO_CRCINIT_24BIT       0x555555
 #define RADIO_CRCPOLY_24BIT       0x0000065B  /// ref: https://devzone.nordicsemi.com/f/nordic-q-a/44111/crc-register-values-for-a-24-bit-crc
 
-#define MAX_PAYLOAD_LENGTH        (127)
 #define INTERFRAM_SPACING         (150)       // in us
 
 #define BLE_ACCESS_ADDR           0x8E89BED6  // the actual address is 0xD6, 0xBE, 0x89, 0x8E
 
+#define RADIO_TXPOWER             0x00 // in 2-compilant format  0xec == -20db
+
 //=========================== variables =======================================
 
 typedef struct {
-    radio_capture_cbt   startFrame_cb;
-    radio_capture_cbt   endFrame_cb;
-    radio_state_t       state; 
-    uint8_t             payload[1+MAX_PACKET_SIZE] __attribute__ ((aligned));
-    int8_t              rssi_sample;
-//  volatile bool event_ready;
+    radio_capture_cbt         startFrame_cb;
+    radio_capture_cbt         endFrame_cb;
+    radio_state_t             state;
+    uint8_t                   payload[MAX_PACKET_SIZE] __attribute__ ((aligned));
 } radio_vars_t;
 
-static radio_vars_t radio_vars;
+radio_vars_t radio_vars;
 
-//=========================== prototypes ======================================
+//=========================== private =========================================
 
-static uint32_t swap_bits(uint32_t inp);
-static uint32_t bytewise_bitswap(uint32_t inp);
-static uint8_t  ble_channel_to_frequency(uint8_t channel);
+uint32_t ble_channel_to_frequency(uint8_t channel);
 
 static void hfclock_start(void);
 static void hfclock_stop(void);
 
-
 //=========================== public ==========================================
 
+//===== admin
 
 void radio_init(void) {
 
-    // clear internal variables
-    memset(&radio_vars, 0, sizeof(radio_vars));
+    uint8_t i;
+
+    // clear variables
+    memset(&radio_vars,0,sizeof(radio_vars_t));
 
     // set radio configuration parameters
-    NRF_RADIO->TXPOWER   = (RADIO_TXPOWER_TXPOWER_0dBm << RADIO_TXPOWER_TXPOWER_Pos);
+    NRF_RADIO->TXPOWER     = (uint32_t)RADIO_TXPOWER;
 
+    // configure packet
+    NRF_RADIO->PCNF0       = 
+        (((1UL) << RADIO_PCNF0_S0LEN_Pos) & RADIO_PCNF0_S0LEN_Msk) | 
+        (((0UL) << RADIO_PCNF0_S1LEN_Pos) & RADIO_PCNF0_S1LEN_Msk) |
+        (((8UL) << RADIO_PCNF0_LFLEN_Pos) & RADIO_PCNF0_LFLEN_Msk);
 
-  #if defined(BLE_2Mbit)
-      NRF_RADIO->MODE         = ((RADIO_MODE_MODE_Ble_2Mbit) << RADIO_MODE_MODE_Pos) & RADIO_MODE_MODE_Msk; 
-  #elif defined(BLE_LR500Kbit)
-      NRF_RADIO->MODE         = ((RADIO_MODE_MODE_Ble_LR500Kbit) << RADIO_MODE_MODE_Pos) & RADIO_MODE_MODE_Msk; 
-  #elif defined(BLE_LR125Kbit)
-      NRF_RADIO->MODE         = ((RADIO_MODE_MODE_Ble_LR125Kbit) << RADIO_MODE_MODE_Pos) & RADIO_MODE_MODE_Msk; 
-  #else
-      NRF_RADIO->MODE         = ((RADIO_MODE_MODE_Ble_1Mbit) << RADIO_MODE_MODE_Pos) & RADIO_MODE_MODE_Msk; 
-  #endif
+    NRF_RADIO->PCNF1       = 
+        (((RADIO_PCNF1_ENDIAN_Little)    << RADIO_PCNF1_ENDIAN_Pos)  & RADIO_PCNF1_ENDIAN_Msk)  |
+        (((3UL)                          << RADIO_PCNF1_BALEN_Pos)   & RADIO_PCNF1_BALEN_Msk)   |
+        (((0UL)                          << RADIO_PCNF1_STATLEN_Pos) & RADIO_PCNF1_STATLEN_Msk) |
+        ((((uint32_t)MAX_PACKET_SIZE)    << RADIO_PCNF1_MAXLEN_Pos)  & RADIO_PCNF1_MAXLEN_Msk)  |
+        ((RADIO_PCNF1_WHITEEN_Enabled    << RADIO_PCNF1_WHITEEN_Pos) & RADIO_PCNF1_WHITEEN_Msk);
 
+        
+    NRF_RADIO->CRCPOLY     = RADIO_CRCPOLY_24BIT;
+    NRF_RADIO->CRCCNF      = 
+        (((RADIO_CRCCNF_SKIPADDR_Skip) << RADIO_CRCCNF_SKIPADDR_Pos) & RADIO_CRCCNF_SKIPADDR_Msk) |
+        (((RADIO_CRCCNF_LEN_Three)     << RADIO_CRCCNF_LEN_Pos)      & RADIO_CRCCNF_LEN_Msk);
 
-    NRF_RADIO->PCNF0 =   (((0UL) << RADIO_PCNF0_S0LEN_Pos) & RADIO_PCNF0_S0LEN_Msk) | 
-                         (((0UL) << RADIO_PCNF0_S1LEN_Pos) & RADIO_PCNF0_S1LEN_Msk) |
-                         (((8UL) << RADIO_PCNF0_LFLEN_Pos) & RADIO_PCNF0_LFLEN_Msk);
+    NRF_RADIO->CRCINIT     = RADIO_CRCINIT_24BIT;
 
-    NRF_RADIO->PCNF1 =   (((RADIO_PCNF1_ENDIAN_Little)    << RADIO_PCNF1_ENDIAN_Pos)  & RADIO_PCNF1_ENDIAN_Msk)  |
-                         (((3UL)                          << RADIO_PCNF1_BALEN_Pos)   & RADIO_PCNF1_BALEN_Msk)   |
-                         (((0UL)                          << RADIO_PCNF1_STATLEN_Pos) & RADIO_PCNF1_STATLEN_Msk) |
-                         ((((uint32_t)MAX_PACKET_SIZE) << RADIO_PCNF1_MAXLEN_Pos)  & RADIO_PCNF1_MAXLEN_Msk)  |
-                         ((RADIO_PCNF1_WHITEEN_Enabled    << RADIO_PCNF1_WHITEEN_Pos) & RADIO_PCNF1_WHITEEN_Msk);
+    NRF_RADIO->TXADDRESS   = 0;
+    NRF_RADIO->RXADDRESSES = 1;
+
+    NRF_RADIO->MODE        = ((RADIO_MODE_MODE_Ble_1Mbit) << RADIO_MODE_MODE_Pos) & RADIO_MODE_MODE_Msk;
+    NRF_RADIO->TIFS        = INTERFRAM_SPACING;
+    NRF_RADIO->PREFIX0     = ((BLE_ACCESS_ADDR & 0xff000000) >> 24);
+    NRF_RADIO->BASE0       = ((BLE_ACCESS_ADDR & 0x00ffffff) << 8 );
+
+    NRF_RADIO->PACKETPTR   = (uint32_t)(radio_vars.payload);
+
+    // set priority and disable interrupt in NVIC
+    NVIC->IP[((uint32_t)RADIO_IRQn)]     = 
+        (uint8_t)(
+            (RADIO_PRIORITY << (8 - __NVIC_PRIO_BITS)) & (uint32_t)0xff
+        );
+    NVIC->ICER[((uint32_t)RADIO_IRQn)>>5] = 
+       ((uint32_t)1) << ( ((uint32_t)RADIO_IRQn) & 0x1f);
+
+    // enable address and payload interrupts 
+    NRF_RADIO->INTENSET   = 
+        RADIO_INTENSET_ADDRESS_Set    << RADIO_INTENSET_ADDRESS_Pos |
+        RADIO_INTENSET_END_Set        << RADIO_INTENSET_END_Pos;
     
-    NRF_RADIO->CRCPOLY      = RADIO_CRCPOLY_24BIT;
-    NRF_RADIO->CRCCNF       = (
-                                ((RADIO_CRCCNF_SKIPADDR_Skip) << RADIO_CRCCNF_SKIPADDR_Pos) & RADIO_CRCCNF_SKIPADDR_Msk) |
-                                (((RADIO_CRCCNF_LEN_Three)    << RADIO_CRCCNF_LEN_Pos)      & RADIO_CRCCNF_LEN_Msk
-                              );
-    NRF_RADIO->CRCINIT      = RADIO_CRCINIT_24BIT;
+    NVIC->ICPR[((uint32_t)RADIO_IRQn)>>5] = 
+       ((uint32_t)1) << ( ((uint32_t)RADIO_IRQn) & 0x1f);
+    NVIC->ISER[((uint32_t)RADIO_IRQn)>>5] = 
+       ((uint32_t)1) << ( ((uint32_t)RADIO_IRQn) & 0x1f);
 
-    NRF_RADIO->TXADDRESS    = 0;
-    NRF_RADIO->RXADDRESSES  = 1;
-
-    NRF_RADIO->TIFS         = INTERFRAM_SPACING;
-    NRF_RADIO->PREFIX0      = ((BLE_ACCESS_ADDR & 0xff000000) >> 24);
-    NRF_RADIO->BASE0        = ((BLE_ACCESS_ADDR & 0x00ffffff) << 8 );
-
-    // set payload pointer
-    NRF_RADIO->PACKETPTR = (uint32_t)(radio_vars.payload);
-
-    // set up interrupts
-    NVIC_DisableIRQ(RADIO_IRQn);
-
-    NRF_RADIO->INTENSET = (RADIO_INTENSET_ADDRESS_Enabled << RADIO_INTENSET_ADDRESS_Pos) |
-                          (RADIO_INTENSET_END_Enabled        << RADIO_INTENSET_END_Pos); 
-
-    NVIC_SetPriority(RADIO_IRQn, RADIO_PRIORITY);
-
-    NVIC_ClearPendingIRQ(RADIO_IRQn);
-    NVIC_EnableIRQ(RADIO_IRQn);
-    
     radio_vars.state        = RADIOSTATE_STOPPED;
 }
 
-void radio_ble_init(void){
-    
-    NRF_RADIO->PCNF0 =   (((1UL) << RADIO_PCNF0_S0LEN_Pos) & RADIO_PCNF0_S0LEN_Msk) | 
-                         (((0UL) << RADIO_PCNF0_S1LEN_Pos) & RADIO_PCNF0_S1LEN_Msk) |
-                         (((8UL) << RADIO_PCNF0_LFLEN_Pos) & RADIO_PCNF0_LFLEN_Msk);
-
-    NRF_RADIO->PCNF1 =   (((RADIO_PCNF1_ENDIAN_Little)    << RADIO_PCNF1_ENDIAN_Pos)  & RADIO_PCNF1_ENDIAN_Msk)  |
-                         (((3UL)                          << RADIO_PCNF1_BALEN_Pos)   & RADIO_PCNF1_BALEN_Msk)   |
-                         (((0UL)                          << RADIO_PCNF1_STATLEN_Pos) & RADIO_PCNF1_STATLEN_Msk) |
-                         ((((uint32_t)MAX_PAYLOAD_LENGTH) << RADIO_PCNF1_MAXLEN_Pos)  & RADIO_PCNF1_MAXLEN_Msk)  |
-                         ((RADIO_PCNF1_WHITEEN_Enabled    << RADIO_PCNF1_WHITEEN_Pos) & RADIO_PCNF1_WHITEEN_Msk);
-    
-    NRF_RADIO->CRCPOLY      = RADIO_CRCPOLY_24BIT;
-    NRF_RADIO->CRCCNF       = (
-                                ((RADIO_CRCCNF_SKIPADDR_Skip) << RADIO_CRCCNF_SKIPADDR_Pos) & RADIO_CRCCNF_SKIPADDR_Msk) |
-                                (((RADIO_CRCCNF_LEN_Three)    << RADIO_CRCCNF_LEN_Pos)      & RADIO_CRCCNF_LEN_Msk
-                              );
-    NRF_RADIO->CRCINIT      = RADIO_CRCINIT_24BIT;
-
-    NRF_RADIO->TXADDRESS    = 0;
-    NRF_RADIO->RXADDRESSES  = 1;
-
-    NRF_RADIO->MODE         = ((RADIO_MODE_MODE_Ble_1Mbit) << RADIO_MODE_MODE_Pos) & RADIO_MODE_MODE_Msk;
-    NRF_RADIO->TIFS         = INTERFRAM_SPACING;
-    NRF_RADIO->PREFIX0      = ((BLE_ACCESS_ADDR & 0xff000000) >> 24);
-    NRF_RADIO->BASE0        = ((BLE_ACCESS_ADDR & 0x00ffffff) << 8 );
-}
-
-
 void radio_setStartFrameCb(radio_capture_cbt cb) {
-
+    
     radio_vars.startFrame_cb  = cb;
 }
 
-
 void radio_setEndFrameCb(radio_capture_cbt cb) {
 
-    radio_vars.endFrame_cb = cb;
+    radio_vars.endFrame_cb    = cb;
 }
 
+//===== reset
 
 void radio_reset(void) {
 
     // reset is implemented by power off and power radio
-    NRF_RADIO->POWER = ((uint32_t)(RADIO_POWER_POWER_Disabled)) << RADIO_POWER_POWER_Pos;
-    NRF_RADIO->POWER = ((uint32_t)(RADIO_POWER_POWER_Enabled)) << RADIO_POWER_POWER_Pos;
+    NRF_RADIO->POWER = ((uint32_t)(0)) << RADIO_POWER_POWER_POS;
+    NRF_RADIO->POWER = ((uint32_t)(1)) << RADIO_POWER_POWER_POS;
 
-    radio_vars.state  = RADIOSTATE_STOPPED;
+    radio_vars.state    = RADIOSTATE_STOPPED;
 }
 
-
-
-#ifdef IEEE802154
-
-
-void radio_setFrequency(uint8_t frequency, radio_freq_t tx_or_rx) {
-
-    NRF_RADIO->FREQUENCY = FREQUENCY_STEP*(frequency-FREQUENCY_OFFSET);
-
-    radio_vars.state     = RADIOSTATE_FREQUENCY_SET;
-}
-
-#else
+//===== RF admin
 
 void radio_setFrequency(uint8_t channel, radio_freq_t tx_or_rx) {
 
@@ -203,23 +151,24 @@ void radio_setFrequency(uint8_t channel, radio_freq_t tx_or_rx) {
 
     radio_vars.state            = RADIOSTATE_FREQUENCY_SET;
 }
-#endif
 
-int8_t radio_getFrequencyOffset(void){
-  
-    return 0; 
+
+uint32_t radio_get_frequency(void) {
+
+    // return value, in MHz
+    return (2400 + (NRF_RADIO->FREQUENCY & 0x0000007F));
 }
 
 void radio_rfOn(void) {
-#if  SUPER_LOW_POWER
+    
+#ifdef  SUPER_LOW_POWER
     hfclock_start();
 #endif
     // power on radio
-    NRF_RADIO->POWER = ((uint32_t)(RADIO_POWER_POWER_Enabled)) << RADIO_POWER_POWER_Pos;
+    NRF_RADIO->POWER = ((uint32_t)(1)) << RADIO_POWER_POWER_POS;
 
-    radio_vars.state = RADIOSTATE_STOPPED;
+    radio_vars.state    = RADIOSTATE_STOPPED;
 }
-
 
 void radio_rfOff(void) {
 
@@ -232,15 +181,24 @@ void radio_rfOff(void) {
 
     while(NRF_RADIO->EVENTS_DISABLED==0);
 
-    leds_radio_off();
+    // wiggle debug pin
     debugpins_radio_clr();
-#if  SUPER_LOW_POWER
+    leds_radio_off();
+    radio_vars.state  = RADIOSTATE_RFOFF;
+
+#ifdef  SUPER_LOW_POWER
     hfclock_stop();
 #endif
 
-    radio_vars.state  = RADIOSTATE_RFOFF;
 }
 
+int8_t radio_getFrequencyOffset(void){
+
+    // not supported
+    return 0;
+}
+
+//===== TX
 
 void radio_loadPacket(uint8_t* packet, uint16_t len) {
 
@@ -249,7 +207,8 @@ void radio_loadPacket(uint8_t* packet, uint16_t len) {
     ///< note: 1st byte should be the payload size (for Nordic), and
     ///   the two last bytes are used by the MAC layer for CRC
     if ((len > 0) && (len <= MAX_PACKET_SIZE)) {
-        memcpy(&radio_vars.payload[0], packet, len);
+        radio_vars.payload[0]= len;
+        memcpy(&radio_vars.payload[1], packet, len);
     }
 
     // (re)set payload pointer
@@ -257,37 +216,10 @@ void radio_loadPacket(uint8_t* packet, uint16_t len) {
 
     radio_vars.state  = RADIOSTATE_PACKET_LOADED;
 }
-
-void radio_ble_loadPacket(uint8_t* packet, uint16_t len) {
-    radio_vars.state  = RADIOSTATE_LOADING_PACKET;
-
-    ///< note: 1st byte should be the payload size (for Nordic), and
-    ///   the two last bytes are used by the MAC layer for CRC
-    if ((len > 0) && (len <= MAX_PACKET_SIZE)) {
-        memcpy(&radio_vars.payload[0], packet, len);
-    }
-
-    // (re)set payload pointer
-    NRF_RADIO->PACKETPTR = (uint32_t)(radio_vars.payload);
-
-    radio_vars.state  = RADIOSTATE_PACKET_LOADED;
-}
-
 
 void radio_txEnable(void) {
-#if  SUPER_LOW_POWER
-    hfclock_start();
-
-    NRF_RADIO->EVENTS_DISABLED = 0;
-
-    // stop radio
-    NRF_RADIO->TASKS_DISABLE = (uint32_t)(1);
-
-    while(NRF_RADIO->EVENTS_DISABLED==0);
 
     radio_vars.state  = RADIOSTATE_ENABLING_TX;
-    
-#endif
 
     NRF_RADIO->EVENTS_READY = (uint32_t)0;
 
@@ -301,56 +233,39 @@ void radio_txEnable(void) {
     radio_vars.state  = RADIOSTATE_TX_ENABLED;
 }
 
-
 void radio_txNow(void) {
 
     NRF_RADIO->TASKS_START = (uint32_t)1;
 
-    radio_vars.state = RADIOSTATE_TRANSMITTING;
+    radio_vars.state  = RADIOSTATE_TRANSMITTING;
 }
 
+//===== RX
 
 void radio_rxEnable(void) {
 
-    radio_vars.state = RADIOSTATE_ENABLING_RX;
-#if  SUPER_LOW_POWER
-    hfclock_start();
+    radio_vars.state  = RADIOSTATE_ENABLING_RX;
 
-    NRF_RADIO->EVENTS_DISABLED = 0;
+    if (NRF_RADIO->STATE != STATE_RX){
 
-    // stop radio
-    NRF_RADIO->TASKS_DISABLE = (uint32_t)(1);
-
-    while(NRF_RADIO->EVENTS_DISABLED==0);
-
-    NRF_RADIO->EVENTS_READY = (uint32_t)0;
-
-    NRF_RADIO->TASKS_RXEN  = (uint32_t)1;
-
-    while(NRF_RADIO->EVENTS_READY==0);
-#else
-    if (NRF_RADIO->STATE != STATE_RX) {
-
-        // turn off radio first
-        radio_rfOff();
-            
+       // turn off radio first
+       radio_rfOff();
+        
         NRF_RADIO->EVENTS_READY = (uint32_t)0;
 
         NRF_RADIO->TASKS_RXEN  = (uint32_t)1;
 
         while(NRF_RADIO->EVENTS_READY==0);
     }
-#endif
 
+    // wiggle debug pin
+    debugpins_radio_set();
+    leds_radio_on();
 }
-
 
 void radio_rxNow(void) {
 
     NRF_RADIO->TASKS_START = (uint32_t)1;
-
-    debugpins_radio_set();
-    leds_radio_on();
 
     radio_vars.state  = RADIOSTATE_LISTENING;
 }
@@ -364,94 +279,49 @@ void radio_getReceivedFrame(
       bool*    crc
    ) {
 
-    uint8_t len;
-
-    len = 50;
-
-    if (len > MAX_PACKET_SIZE) {
-        len = MAX_PACKET_SIZE; 
-    }
-
-    if (len > maxBufLen) {
-        len = maxBufLen; 
-    }
-
-    // store other parameters
-    // 2 bytes header. Add one byte if s1len is set to 8
-    *lenRead = len+2;
-
-    // copy payload
-    memcpy(bufRead, &radio_vars.payload[0], *lenRead);
-
-    *rssi = (int8_t)(0-NRF_RADIO->RSSISAMPLE); 
-
-    *crc = (NRF_RADIO->CRCSTATUS == 1U);
-}
-
-
-void radio_ble_getReceivedFrame(uint8_t* pBufRead,
-                        uint8_t* pLenRead,
-                        uint8_t  maxBufLen,
-                         int8_t* pRssi,
-                        uint8_t* pLqi,
-                           bool* pCrc) 
-{
     // check for length parameter; if too long, payload won't fit into memory
     uint8_t len;
 
-    len = radio_vars.payload[1];
+    len = radio_vars.payload[0];
 
     if (len == 0) {
         return; 
     }
 
-    if (len > MAX_PACKET_SIZE) {
+    if (len > MAX_PACKET_SIZE) { 
         len = MAX_PACKET_SIZE; 
     }
 
-    if (len > maxBufLen) {
+    if (len > maxBufLen) { 
         len = maxBufLen; 
     }
 
     // copy payload
-    memcpy(pBufRead, &radio_vars.payload[0], len+2);
+    memcpy(bufRead, &radio_vars.payload[1], len);
 
     // store other parameters
-    *pLenRead = len+2;
+    *lenRead = len;
 
-    *pCrc = (NRF_RADIO->CRCSTATUS == 1U);
+    *rssi = (int8_t)(0-NRF_RADIO->RSSISAMPLE);
 
+    *crc = (NRF_RADIO->CRCSTATUS == 1U);
 }
 
+void radio_get_crc(uint8_t* crc24){
+
+    uint32_t crc;
+    crc = NRF_RADIO->RXCRC;
+
+    crc24[0] = (uint8_t)((crc & 0x00ff0000) >> 16);
+    crc24[1] = (uint8_t)((crc & 0x0000ff00) >> 8);
+    crc24[2] = (uint8_t)((crc & 0x000000ff) >> 0);
+}
 
 //=========================== private =========================================
 
-static uint32_t swap_bits(uint32_t inp) {
+uint32_t ble_channel_to_frequency(uint8_t channel) {
 
-    uint32_t i;
-    uint32_t retval = 0;
-
-    inp = (inp & 0x000000FFUL);
-
-    for (i = 0; i < 8; i++) {
-        retval |= ((inp >> i) & 0x01) << (7 - i);
-    }
-
-    return retval;
-}
-
-
-static uint32_t bytewise_bitswap(uint32_t inp) {
-
-    return (swap_bits(inp >> 24) << 24)
-          | (swap_bits(inp >> 16) << 16)
-          | (swap_bits(inp >> 8) << 8)
-          | (swap_bits(inp));
-}
-
-static uint8_t ble_channel_to_frequency(uint8_t channel) {
-
-    uint8_t frequency;
+    uint32_t frequency;
     
     if (channel<=10) {
 
@@ -461,7 +331,7 @@ static uint8_t ble_channel_to_frequency(uint8_t channel) {
             
             frequency = 28+2*(channel-11);
         } else {
-            switch(channel){
+            switch(channel) {
                 case 37:
                     frequency = 2;
                 break;
@@ -505,8 +375,7 @@ static void hfclock_stop(void) {
 
 //=========================== callbacks =======================================
 
-
-kick_scheduler_t radio_isr(void){
+kick_scheduler_t    radio_isr(void){
 
     uint32_t time_stampe;
 
@@ -528,11 +397,10 @@ kick_scheduler_t radio_isr(void){
 
     // END 
     if (NRF_RADIO->EVENTS_END) {
-
         if (radio_vars.endFrame_cb!=NULL){
             radio_vars.endFrame_cb(time_stampe);
         }
-        
+
         NRF_RADIO->EVENTS_END = (uint32_t)0;
         return KICK_SCHEDULER;
     }
