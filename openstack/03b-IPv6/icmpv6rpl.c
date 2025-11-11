@@ -16,8 +16,8 @@
 
 //=========================== definition ======================================
 
-#define DIO_PORTION 10
-#define DAO_PORTION 20
+#define DIO_PORTION 20
+#define DAO_PORTION 30
 
 //=========================== variables =======================================
 
@@ -250,7 +250,7 @@ void icmpv6rpl_receive(OpenQueueEntry_t *msg) {
 
     // retrieve ICMPv6 code
     icmpv6code = (((ICMPv6_ht *) (msg->payload))->code);
-
+    
     // toss ICMPv6 header
     packetfunctions_tossHeader(&msg, sizeof(ICMPv6_ht));
 
@@ -260,6 +260,7 @@ void icmpv6rpl_receive(OpenQueueEntry_t *msg) {
             icmpv6rpl_timer_DIO_task();
             break;
         case IANA_ICMPv6_RPL_DIO:
+            openserial_printf("received a DIO\r\n");
             if (idmanager_getIsDAGroot() == TRUE) {
                 // stop here if I'm in the DAG root
                 break; // break, don't return

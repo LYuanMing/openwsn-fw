@@ -149,7 +149,7 @@
 
 //===== board initialization mode 
 #ifndef SUPER_LOW_POWER
-#define SUPER_LOW_POWER (0)
+#define SUPER_LOW_POWER (1)
 #endif
 
 //=========================== typedef  ========================================

@@ -21,7 +21,7 @@ The sctimer is periodic, of period SCTIMER_PERIOD ticks. Each time it elapses:
 
 //=========================== defines =========================================
 
-#define SCTIMER_PERIOD     32768 // @32kHz = 1s
+#define SCTIMER_PERIOD     (0xffff>>4) // @32kHz = 1s
 
 //=========================== variables =======================================
 

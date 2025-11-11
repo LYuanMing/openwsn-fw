@@ -38,11 +38,11 @@ void board_init(void) {
     NRF_CLOCK->EVENTS_HFCLKSTARTED = 0;
     NRF_CLOCK->TASKS_HFCLKSTART    = 1;
     while (NRF_CLOCK->EVENTS_HFCLKSTARTED == 0);
+    leds_init();
 
 #if SUPER_LOW_POWER
 
 #else
-    leds_init();
     debugpins_init();
     uart_init();
 #endif

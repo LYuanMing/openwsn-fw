@@ -27,11 +27,18 @@ end of frame event), it will turn on its error LED.
 
 #define LENGTH_PACKET   125+LENGTH_CRC  ///< maximum length is 127 bytes
 #define LEN_PKT_TO_SEND 20+LENGTH_CRC
-#define CHANNEL         11             ///< 11=2.405GHz
+#define CHANNEL         15             ///< 11=2.405GHz
 #define TIMER_PERIOD    (0xffff>>4)    ///< 0xffff = 2s@32kHz
 #define ID              0x99           ///< byte sent in the packets
 
-uint8_t stringToSend[]  = "+002 Ptest.24.00.12.-010\n";
+uint8_t stringToSend[]  = "000, len: 000, CRC: 0, RSSI: -000\n";
+uint8_t RSSI_str[] = ", RSSI: ";
+uint8_t CRC_str[] = ", CRC: ";
+uint8_t pkt_len_str[] = ", len: ";
+uint8_t timer_str[] = "TF";
+
+uint8_t* uart_buff = timer_str;
+uint8_t buff_len = sizeof(timer_str);
 
 //=========================== variables =======================================
 
@@ -90,9 +97,10 @@ uint8_t  cb_uart_rx(void);
 int mote_main(void) {
     uint8_t i;
 
-    uint8_t freq_offset;
+    uint8_t count=0;
     uint8_t sign;
     uint8_t read;
+    uint32_t now_ticks = 0;
 
     // clear local variables
     memset(&app_vars,0,sizeof(app_vars_t));
@@ -102,19 +110,12 @@ int mote_main(void) {
 
     // setup UART
     uart_setCallbacks(cb_uart_tx_done,cb_uart_rx);
-    uart_enableInterrupts();
 
     app_vars.uartDone = 1;
 
     // add callback functions radio
     radio_setStartFrameCb(cb_startFrame);
     radio_setEndFrameCb(cb_endFrame);
-
-    // prepare packet
-    app_vars.packet_len = sizeof(app_vars.packet);
-    for (i=0;i<app_vars.packet_len;i++) {
-        app_vars.packet[i] = ID;
-    }
 
     // start bsp timer
     sctimer_set_callback(cb_timer);
@@ -137,6 +138,7 @@ int mote_main(void) {
 
         // sleep while waiting for at least one of the flags to be set
         while (app_vars.flags==0x00) {
+            now_ticks = NRF_RTC0->COUNTER;
             board_sleep();
         }
 
@@ -189,30 +191,26 @@ int mote_main(void) {
                             &app_vars.rxpk_lqi,
                             &app_vars.rxpk_crc
                         );
-
-                        freq_offset = radio_getFrequencyOffset();
-                        sign = (freq_offset & 0x80) >> 7;
-                        if (sign){
-                            read = 0xff - (uint8_t)(freq_offset) + 1;
-                        } else {
-                            read = freq_offset;
+                        if (app_vars.packet[0] == '0' && app_vars.packet[1] == '0' && app_vars.packet[2] == '0' )
+                        {
+                            count = 0;
                         }
-
+                        count += 1;
                         i = 0;
-                        if (sign) {
-                            stringToSend[i++] = '-';
-                        } else {
-                            stringToSend[i++] = '+';
-                        }
-                        stringToSend[i++] = '0'+read/100;
-                        stringToSend[i++] = '0'+read/10;
-                        stringToSend[i++] = '0'+read%10;
-                        stringToSend[i++] = ' ';
 
-                        stringToSend[i++] = 'P';
-                        memcpy(&stringToSend[i],&app_vars.packet[0],14);
-                        i += 14;
+                        stringToSend[i++] = '0'+count/100;
+                        stringToSend[i++] = '0'+((count%100)/10);
+                        stringToSend[i++] = '0'+count%10;
 
+                        i += (sizeof(pkt_len_str) - 1);
+                        stringToSend[i++] = '0'+app_vars.packet_len/100;
+                        stringToSend[i++] = '0'+((app_vars.packet_len%100)/10);
+                        stringToSend[i++] = '0'+app_vars.packet_len%10;
+
+                        i += (sizeof(CRC_str) - 1);
+                        stringToSend[i++] = '0'+app_vars.rxpk_crc%10;
+
+                        i += (sizeof(RSSI_str) - 1);
                         sign = (app_vars.rxpk_rssi & 0x80) >> 7;
                         if (sign){
                             read = 0xff - (uint8_t)(app_vars.rxpk_rssi) + 1;
@@ -236,7 +234,7 @@ int mote_main(void) {
                         if (app_vars.uartDone == 1) {
                             app_vars.uartDone              = 0;
                             app_vars.uart_lastTxByteIndex  = 0;
-                            uart_writeByte(stringToSend[app_vars.uart_lastTxByteIndex]);
+                            //uart_writeByte(app_vars.packet[app_vars.uart_lastTxByteIndex]);
                         }
 
                         // led
@@ -268,24 +266,24 @@ int mote_main(void) {
                     radio_rfOff();
 
                     // prepare packet
-                    app_vars.packet_len = sizeof(app_vars.packet);
+                    app_vars.packet_len = sizeof(stringToSend) <= sizeof(app_vars.packet)?sizeof(stringToSend):sizeof(app_vars.packet);
                     i = 0;
-                    app_vars.packet[i++] = 't';
-                    app_vars.packet[i++] = 'e';
-                    app_vars.packet[i++] = 's';
-                    app_vars.packet[i++] = 't';
-                    app_vars.packet[i++] = CHANNEL;
-                    while (i<app_vars.packet_len) {
-                        app_vars.packet[i++] = ID;
+                    for(int j = 0;j < app_vars.packet_len;j++) {
+                      app_vars.packet[j]= stringToSend[j];
                     }
-
+  
                     // start transmitting packet
-                    radio_loadPacket(app_vars.packet,LEN_PKT_TO_SEND);
+                    radio_loadPacket(app_vars.packet,app_vars.packet_len);
                     radio_txEnable();
                     radio_txNow();
 
                     app_vars.state = APP_STATE_TX;
                 }
+
+
+                app_vars.uartDone              = 0;
+                app_vars.uart_lastTxByteIndex  = 0;
+                uart_writeByte(uart_buff[app_vars.uart_lastTxByteIndex]);
 
                 // clear flag
                 app_vars.flags &= ~APP_FLAG_TIMER;
@@ -332,8 +330,8 @@ void cb_timer(void) {
 
 void cb_uart_tx_done(void) {
     app_vars.uart_lastTxByteIndex++;
-    if (app_vars.uart_lastTxByteIndex<sizeof(stringToSend)) {
-        uart_writeByte(stringToSend[app_vars.uart_lastTxByteIndex]);
+    if (app_vars.uart_lastTxByteIndex<buff_len) {
+        uart_writeByte(uart_buff[app_vars.uart_lastTxByteIndex]);
     } else {
         app_vars.uartDone = 1;
     }

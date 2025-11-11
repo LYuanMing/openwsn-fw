@@ -61,7 +61,6 @@ int mote_main(void) {
    
    // setup UART
    uart_setCallbacks(cb_uartTxDone,cb_uartRxCb);
-   uart_enableInterrupts();
    
    // setup sctimer
    sctimer_set_callback(cb_compare);

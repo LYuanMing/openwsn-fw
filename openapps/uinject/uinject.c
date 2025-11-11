@@ -14,7 +14,6 @@
 #include "icmpv6rpl.h"
 #include "idmanager.h"
 #include "openrandom.h"
-#include "nrf52840.h"
 #include "msf.h"
 
 //=========================== defines =========================================

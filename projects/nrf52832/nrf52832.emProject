@@ -1,0 +1,594 @@
+<!DOCTYPE CrossStudio_Project_File>
+<solution Name="nrf52832" target="8" version="2">
+  <configuration
+    Name="Common"
+    c_preprocessor_definitions="__WIN32__;NRF52832_XXAA;NRF52832"
+    c_user_include_directories="../../bsp/boards;../../bsp/boards/nrf52832;../../bsp/boards/nrf52832/sdk;../../inc;../../drivers/common;../../drivers/common/crypto;../../kernel;../../openstack;../../openstack/02a-MAClow;../../openstack/02b-MAChigh;../../openstack/03a-IPHC;../../openstack/03b-IPv6;../../openstack/04-TRAN;../../openstack/04-TRAN/sock;../../openstack/cross-layers;../../openweb/;../../openweb/opencoap;../../openapps;../../openapps/uinject;../../openapps/cinfo;../../openapps/cjoin;../../openapps/cled;../../openapps/cweelknown;../../openapps/uecho"
+    linker_memory_map_file="E:/Project/6TiSCH/battery-free/openwsn-fw/projects/nrf52832/nRF52832_xxAA_MemoryMap.xml"
+    linker_section_placement_file="E:/Project/6TiSCH/battery-free/openwsn-fw/projects/nrf52832/flash_placement.xml"
+    linker_section_placement_macros="FLASH_PH_START=0x0;FLASH_PH_SIZE=0x80000;RAM_PH_START=0x20000000;RAM_PH_SIZE=0x10000;FLASH_START=0x0;FLASH_SIZE=0x80000;RAM_START=0x20000000;RAM_SIZE=0x10000"
+    linker_section_placements_segments="FLASH1      RX    0x00000000    0x00080000;RAM1        RW    0x20000000    0x00010000;CODE_RAM1   RW    0x00800000    0x00010000" />
+  <configuration
+    Name="Debug"
+    c_preprocessor_definitions="DEBUG"
+    gcc_debugging_level="Level 3"
+    gcc_omit_frame_pointer="Yes"
+    gcc_optimization_level="None"
+    linker_section_placements_segments="FLASH1      RX    0x00000000    0x00080000;RAM1        RW    0x20000000    0x00010000;CODE_RAM1   RW    0x00800000    0x00010000" />
+  <configuration
+    Name="Release"
+    c_preprocessor_definitions="NDEBUG"
+    gcc_debugging_level="Level 2"
+    gcc_omit_frame_pointer="Yes"
+    gcc_optimization_level="Level 2 balanced" />
+  <project Name="01bsp_leds">
+    <configuration
+      LIBRARY_IO_TYPE="RTT"
+      Name="Common"
+      Target="nRF52832_xxAA"
+      arm_architecture="v7EM"
+      arm_compiler_variant="gcc"
+      arm_core_type="Cortex-M4"
+      arm_endian="Little"
+      arm_fp_abi="Hard"
+      arm_fpu_type="FPv4-SP-D16"
+      arm_linker_heap_size="1024"
+      arm_linker_process_stack_size="0"
+      arm_linker_stack_size="2048"
+      arm_linker_variant="GNU"
+      arm_simulator_memory_simulation_parameter="ROM;0x00000000;0x00080000;RAM;0x00800000;0x00010000;RAM;0x20000000;0x00010000"
+      arm_target_device_name="nRF52832_xxAA"
+      arm_target_interface_type="SWD"
+      c_preprocessor_definitions="ARM_MATH_CM4;NRF52832_XXAA;__NRF_FAMILY"
+      c_user_include_directories=".;$(ProjectDir)/nRF/Device/Include"
+      debug_register_definition_file="$(ProjectDir)/nrf52_Registers.xml"
+      debug_stack_pointer_start="__stack_end__"
+      debug_start_from_entry_point_symbol="No"
+      debug_target_connection="J-Link"
+      gcc_entry_point="Reset_Handler"
+      link_linker_script_file="$(ProjectDir)/nRF_Flash_Variant1.icf"
+      linker_memory_map_file="$(ProjectDir)/nRF52832_xxAA_MemoryMap.xml"
+      linker_output_format="hex"
+      macros="DeviceHeaderFile=$(PackagesDir)/nRF/Device/Include/nrf.h;DeviceSystemFile=$(PackagesDir)/nRF/Device/Source/system_nrf52.c;DeviceVectorsFile=$(PackagesDir)/nRF/Source/nrf52_Vectors.s;DeviceFamily=nRF;Target=nRF52832_xxAA"
+      project_directory=""
+      project_type="Executable"
+      target_reset_script="Reset();" />
+    <configuration
+      Name="Debug"
+      link_linker_script_file="../../bsp/boards/nrf52832/sdk/nrf52832_xxaa.ld"
+      link_use_linker_script_file="No" />
+    <folder Name="application">
+      <file file_name="../common/01bsp_leds/01bsp_leds.c" />
+    </folder>
+    <folder Name="bsp">
+      <folder Name="sdk">
+        <file file_name="../../bsp/boards/nrf52832/sdk/cmsis_compiler.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/cmsis_gcc.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/cmsis_version.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/core_cm4.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/mpu_armv7.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf51_to_nrf52.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52.svd" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52832_peripherals.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52_bitfields.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52_erratas.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52_name_change.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/ses_startup_nrf52.s" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/ses_startup_nrf_common.s" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/system_nrf52.c" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/system_nrf52.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/system_nrf52_approtect.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/thumb_crt0.s" />
+      </folder>
+      <file file_name="../../bsp/boards/nrf52832/adc.c" />
+      <file file_name="../../bsp/boards/nrf52832/adc.h" />
+      <file file_name="../../bsp/boards/nrf52832/board.c" />
+      <file file_name="../../bsp/boards/nrf52832/board_info.h" />
+      <file file_name="../../bsp/boards/nrf52832/cryptoengine.c" />
+      <file file_name="../../bsp/boards/nrf52832/debugpins.c" />
+      <file file_name="../../bsp/boards/nrf52832/eui64.c" />
+      <file file_name="../../bsp/boards/nrf52832/i2c.c" />
+      <file file_name="../../bsp/boards/nrf52832/leds.c" />
+      <file file_name="../../bsp/boards/nrf52832/radio.c" />
+      <file file_name="../../bsp/boards/nrf52832/sctimer.c" />
+      <file file_name="../../bsp/boards/nrf52832/sensors.c" />
+      <file file_name="../../bsp/boards/nrf52832/spi.c" />
+      <file file_name="../../bsp/boards/nrf52832/uart.c" />
+    </folder>
+    <folder Name="inc">
+      <file file_name="../../inc/af.h" />
+      <file file_name="../../inc/check_config.h" />
+      <file file_name="../../inc/config.h" />
+      <file file_name="../../inc/opendefs.h" />
+    </folder>
+  </project>
+  <project Name="01bsp_radio">
+    <configuration
+      LIBRARY_IO_TYPE="RTT"
+      Name="Common"
+      Target="nRF52832_xxAA"
+      arm_architecture="v7EM"
+      arm_compiler_variant="gcc"
+      arm_core_type="Cortex-M4"
+      arm_endian="Little"
+      arm_fp_abi="Hard"
+      arm_fpu_type="FPv4-SP-D16"
+      arm_linker_heap_size="1024"
+      arm_linker_process_stack_size="0"
+      arm_linker_stack_size="2048"
+      arm_linker_variant="SEGGER"
+      arm_simulator_memory_simulation_parameter="ROM;0x00000000;0x00080000;RAM;0x00800000;0x00010000;RAM;0x20000000;0x00010000"
+      arm_target_device_name="nRF52832_xxAA"
+      arm_target_interface_type="SWD"
+      c_preprocessor_definitions="ARM_MATH_CM4;NRF52832_XXAA;__NRF_FAMILY"
+      c_user_include_directories="$(ProjectDir)/nRF/Device/Include"
+      debug_register_definition_file="$(PackagesDir)/nRF/XML/nrf52_Registers.xml"
+      debug_stack_pointer_start="__stack_end__"
+      debug_start_from_entry_point_symbol="No"
+      debug_target_connection="J-Link"
+      gcc_entry_point="Reset_Handler"
+      link_linker_script_file="$(ProjectDir)/nRF_Flash_Variant1.icf"
+      linker_memory_map_file="$(ProjectDir)/nRF52832_xxAA_MemoryMap.xml"
+      linker_output_format="hex"
+      macros="DeviceHeaderFile=$(PackagesDir)/nRF/Device/Include/nrf.h;DeviceSystemFile=$(PackagesDir)/nRF/Device/Source/system_nrf52.c;DeviceVectorsFile=$(PackagesDir)/nRF/Source/nrf52_Vectors.s;DeviceFamily=nRF;Target=nRF52832_xxAA"
+      project_directory=""
+      project_type="Executable"
+      target_reset_script="Reset();" />
+    <configuration Name="Debug" arm_linker_variant="GNU" />
+    <folder Name="application">
+      <file file_name="../common/01bsp_radio/01bsp_radio.c" />
+    </folder>
+    <folder Name="bsp">
+      <folder Name="sdk">
+        <file file_name="../../bsp/boards/nrf52832/sdk/cmsis_compiler.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/cmsis_gcc.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/cmsis_version.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/core_cm4.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/mpu_armv7.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52.svd" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52832_peripherals.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52_bitfields.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52_erratas.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52_name_change.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/ses_startup_nrf52.s" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/ses_startup_nrf_common.s" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/system_nrf52.c" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/system_nrf52.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/system_nrf52_approtect.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/thumb_crt0.s" />
+      </folder>
+      <file file_name="../../bsp/boards/nrf52832/adc.c" />
+      <file file_name="../../bsp/boards/nrf52832/adc.h" />
+      <file file_name="../../bsp/boards/nrf52832/board.c" />
+      <file file_name="../../bsp/boards/nrf52832/board_info.h" />
+      <file file_name="../../bsp/boards/nrf52832/cryptoengine.c" />
+      <file file_name="../../bsp/boards/nrf52832/debugpins.c" />
+      <file file_name="../../bsp/boards/nrf52832/eui64.c" />
+      <file file_name="../../bsp/boards/nrf52832/i2c.c" />
+      <file file_name="../../bsp/boards/nrf52832/leds.c" />
+      <file file_name="../../bsp/boards/nrf52832/radio.c" />
+      <file file_name="../../bsp/boards/nrf52832/sctimer.c" />
+      <file file_name="../../bsp/boards/nrf52832/sensors.c" />
+      <file file_name="../../bsp/boards/nrf52832/spi.c" />
+      <file file_name="../../bsp/boards/nrf52832/uart.c" />
+    </folder>
+    <folder Name="inc">
+      <file file_name="../../inc/af.h" />
+      <file file_name="../../inc/check_config.h" />
+      <file file_name="../../inc/config.h" />
+      <file file_name="../../inc/opendefs.h" />
+    </folder>
+  </project>
+  <project Name="01bsp_sctimer">
+    <configuration
+      LIBRARY_IO_TYPE="RTT"
+      Name="Common"
+      Target="nRF52832_xxAA"
+      arm_architecture="v7EM"
+      arm_compiler_variant="gcc"
+      arm_core_type="Cortex-M4"
+      arm_endian="Little"
+      arm_fp_abi="Hard"
+      arm_fpu_type="FPv4-SP-D16"
+      arm_linker_heap_size="1024"
+      arm_linker_process_stack_size="0"
+      arm_linker_stack_size="2048"
+      arm_linker_variant="GNU"
+      arm_simulator_memory_simulation_parameter="ROM;0x00000000;0x00080000;RAM;0x00800000;0x00010000;RAM;0x20000000;0x00010000"
+      arm_target_device_name="nRF52832_xxAA"
+      arm_target_interface_type="SWD"
+      c_preprocessor_definitions="ARM_MATH_CM4;NRF52832_XXAA;__NRF_FAMILY"
+      c_user_include_directories="$(ProjectDir)/nRF/Device/Include"
+      debug_register_definition_file="$(PackagesDir)/nRF/XML/nrf52_Registers.xml"
+      debug_stack_pointer_start="__stack_end__"
+      debug_start_from_entry_point_symbol="No"
+      debug_target_connection="J-Link"
+      gcc_entry_point="Reset_Handler"
+      link_linker_script_file="$(PackagesDir)/nRF/Scripts/nRF_Flash_Variant1.icf"
+      linker_memory_map_file="$(PackagesDir)/nRF/XML/nRF52832_xxAA_MemoryMap.xml"
+      linker_output_format="hex"
+      macros="DeviceHeaderFile=$(PackagesDir)/nRF/Device/Include/nrf.h;DeviceSystemFile=$(PackagesDir)/nRF/Device/Source/system_nrf52.c;DeviceVectorsFile=$(PackagesDir)/nRF/Source/nrf52_Vectors.s;DeviceFamily=nRF;Target=nRF52832_xxAA"
+      project_directory=""
+      project_type="Executable"
+      target_reset_script="Reset();" />
+    <folder Name="application">
+      <file file_name="../common/01bsp_sctimer/01bsp_sctimer.c" />
+    </folder>
+    <folder Name="bsp">
+      <folder Name="sdk">
+        <file file_name="../../bsp/boards/nrf52832/sdk/cmsis_compiler.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/cmsis_gcc.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/cmsis_version.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/core_cm4.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/mpu_armv7.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52.svd" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52832_peripherals.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52_bitfields.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52_erratas.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52_name_change.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/ses_startup_nrf52.s" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/ses_startup_nrf_common.s" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/system_nrf52.c" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/system_nrf52.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/system_nrf52_approtect.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/thumb_crt0.s" />
+      </folder>
+      <file file_name="../../bsp/boards/nrf52832/adc.c" />
+      <file file_name="../../bsp/boards/nrf52832/adc.h" />
+      <file file_name="../../bsp/boards/nrf52832/board.c" />
+      <file file_name="../../bsp/boards/nrf52832/board_info.h" />
+      <file file_name="../../bsp/boards/nrf52832/cryptoengine.c" />
+      <file file_name="../../bsp/boards/nrf52832/debugpins.c" />
+      <file file_name="../../bsp/boards/nrf52832/eui64.c" />
+      <file file_name="../../bsp/boards/nrf52832/i2c.c" />
+      <file file_name="../../bsp/boards/nrf52832/leds.c" />
+      <file file_name="../../bsp/boards/nrf52832/radio.c" />
+      <file file_name="../../bsp/boards/nrf52832/sctimer.c" />
+      <file file_name="../../bsp/boards/nrf52832/sensors.c" />
+      <file file_name="../../bsp/boards/nrf52832/spi.c" />
+      <file file_name="../../bsp/boards/nrf52832/uart.c" />
+    </folder>
+    <folder Name="inc">
+      <file file_name="../../inc/af.h" />
+      <file file_name="../../inc/check_config.h" />
+      <file file_name="../../inc/config.h" />
+      <file file_name="../../inc/opendefs.h" />
+    </folder>
+  </project>
+  <project Name="01bsp_uart">
+    <configuration
+      LIBRARY_IO_TYPE="RTT"
+      Name="Common"
+      Target="nRF52832_xxAA"
+      arm_architecture="v7EM"
+      arm_compiler_variant="gcc"
+      arm_core_type="Cortex-M4"
+      arm_endian="Little"
+      arm_fp_abi="Hard"
+      arm_fpu_type="FPv4-SP-D16"
+      arm_linker_heap_size="1024"
+      arm_linker_process_stack_size="0"
+      arm_linker_stack_size="2048"
+      arm_linker_variant="GNU"
+      arm_simulator_memory_simulation_parameter="ROM;0x00000000;0x00080000;RAM;0x00800000;0x00010000;RAM;0x20000000;0x00010000"
+      arm_target_device_name="nRF52832_xxAA"
+      arm_target_interface_type="SWD"
+      c_preprocessor_definitions="ARM_MATH_CM4;NRF52832_XXAA;__NRF_FAMILY"
+      c_user_include_directories="$(ProjectDir)/nRF/Device/Include"
+      debug_register_definition_file="$(ProjectDir)/nrf52_Registers.xml"
+      debug_stack_pointer_start="__stack_end__"
+      debug_start_from_entry_point_symbol="No"
+      debug_target_connection="J-Link"
+      gcc_entry_point="Reset_Handler"
+      link_linker_script_file="$(ProjectDir)/nRF_Flash_Variant1.icf"
+      linker_memory_map_file="$(ProjectDir)/nRF52832_xxAA_MemoryMap.xml"
+      linker_output_format="hex"
+      macros="DeviceHeaderFile=$(PackagesDir)/nRF/Device/Include/nrf.h;DeviceSystemFile=$(PackagesDir)/nRF/Device/Source/system_nrf52.c;DeviceVectorsFile=$(PackagesDir)/nRF/Source/nrf52_Vectors.s;DeviceFamily=nRF;Target=nRF52832_xxAA"
+      project_directory=""
+      project_type="Executable"
+      target_reset_script="Reset();" />
+    <folder Name="application">
+      <file file_name="../common/01bsp_uart/01bsp_uart.c" />
+    </folder>
+    <folder Name="bsp">
+      <folder Name="sdk">
+        <file file_name="../../bsp/boards/nrf52832/sdk/cmsis_compiler.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/cmsis_gcc.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/cmsis_version.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/core_cm4.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/mpu_armv7.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf51_to_nrf52.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52.svd" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52832_peripherals.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52_bitfields.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52_erratas.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52_name_change.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/ses_startup_nrf52.s" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/ses_startup_nrf_common.s" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/system_nrf52.c" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/system_nrf52.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/system_nrf52_approtect.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/thumb_crt0.s" />
+      </folder>
+      <file file_name="../../bsp/boards/nrf52832/adc.c" />
+      <file file_name="../../bsp/boards/nrf52832/adc.h" />
+      <file file_name="../../bsp/boards/nrf52832/board.c" />
+      <file file_name="../../bsp/boards/nrf52832/board_info.h" />
+      <file file_name="../../bsp/boards/nrf52832/cryptoengine.c" />
+      <file file_name="../../bsp/boards/nrf52832/debugpins.c" />
+      <file file_name="../../bsp/boards/nrf52832/eui64.c" />
+      <file file_name="../../bsp/boards/nrf52832/i2c.c" />
+      <file file_name="../../bsp/boards/nrf52832/leds.c" />
+      <file file_name="../../bsp/boards/nrf52832/radio.c" />
+      <file file_name="../../bsp/boards/nrf52832/sctimer.c" />
+      <file file_name="../../bsp/boards/nrf52832/sensors.c" />
+      <file file_name="../../bsp/boards/nrf52832/spi.c" />
+      <file file_name="../../bsp/boards/nrf52832/uart.c" />
+    </folder>
+    <folder Name="inc">
+      <file file_name="../../inc/af.h" />
+      <file file_name="../../inc/check_config.h" />
+      <file file_name="../../inc/config.h" />
+      <file file_name="../../inc/opendefs.h" />
+    </folder>
+  </project>
+  <project Name="03oos_openwsn">
+    <configuration
+      LIBRARY_IO_TYPE="RTT"
+      Name="Common"
+      Target="nRF52832_xxAA"
+      arm_architecture="v7EM"
+      arm_compiler_variant="gcc"
+      arm_core_type="Cortex-M4"
+      arm_endian="Little"
+      arm_fp_abi="Hard"
+      arm_fpu_type="FPv4-SP-D16"
+      arm_linker_heap_size="1024"
+      arm_linker_process_stack_size="0"
+      arm_linker_stack_size="2048"
+      arm_linker_variant="SEGGER"
+      arm_simulator_memory_simulation_parameter="ROM;0x00000000;0x00080000;RAM;0x00800000;0x00010000;RAM;0x20000000;0x00010000"
+      arm_target_device_name="nRF52832_xxAA"
+      arm_target_interface_type="SWD"
+      c_preprocessor_definitions="ARM_MATH_CM4;NRF52832_XXAA;__NRF_FAMILY"
+      c_user_include_directories="$(ProjectDir)/nRF/Device/Include"
+      debug_register_definition_file="$(PackagesDir)/nRF/XML/nrf52_Registers.xml"
+      debug_stack_pointer_start="__stack_end__"
+      debug_start_from_entry_point_symbol="No"
+      debug_target_connection="J-Link"
+      gcc_entry_point="Reset_Handler"
+      link_linker_script_file="$(PackagesDir)/nRF/Scripts/nRF_Flash_Variant1.icf"
+      linker_memory_map_file="$(PackagesDir)/nRF/XML/nRF52832_xxAA_MemoryMap.xml"
+      linker_output_format="hex"
+      macros="DeviceHeaderFile=$(PackagesDir)/nRF/Device/Include/nrf.h;DeviceSystemFile=$(PackagesDir)/nRF/Device/Source/system_nrf52.c;DeviceVectorsFile=$(PackagesDir)/nRF/Source/nrf52_Vectors.s;DeviceFamily=nRF;Target=nRF52832_xxAA"
+      project_directory=""
+      project_type="Executable"
+      target_reset_script="Reset();" />
+    <configuration Name="Debug" arm_linker_variant="GNU" />
+    <folder Name="application">
+      <file file_name="../common/03oos_openwsn/03oos_openwsn.c" />
+      <file file_name="../common/03oos_openwsn/03oos_openwsn.h" />
+    </folder>
+    <folder Name="bsp">
+      <folder Name="sdk">
+        <file file_name="../../bsp/boards/nrf52832/sdk/cmsis_compiler.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/cmsis_gcc.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/cmsis_version.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/core_cm4.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/mpu_armv7.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52.svd" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52832_peripherals.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52_bitfields.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52_erratas.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/nrf52_name_change.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/ses_startup_nrf52.s" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/ses_startup_nrf_common.s" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/system_nrf52.c" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/system_nrf52.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/system_nrf52_approtect.h" />
+        <file file_name="../../bsp/boards/nrf52832/sdk/thumb_crt0.s" />
+      </folder>
+      <file file_name="../../bsp/boards/nrf52832/adc.c" />
+      <file file_name="../../bsp/boards/nrf52832/adc.h" />
+      <file file_name="../../bsp/boards/nrf52832/board.c" />
+      <file file_name="../../bsp/boards/nrf52832/board_info.h" />
+      <file file_name="../../bsp/boards/nrf52832/cryptoengine.c" />
+      <file file_name="../../bsp/boards/nrf52832/debugpins.c" />
+      <file file_name="../../bsp/boards/nrf52832/eui64.c" />
+      <file file_name="../../bsp/boards/nrf52832/i2c.c" />
+      <file file_name="../../bsp/boards/nrf52832/leds.c" />
+      <file file_name="../../bsp/boards/nrf52832/radio.c" />
+      <file file_name="../../bsp/boards/nrf52832/sctimer.c" />
+      <file file_name="../../bsp/boards/nrf52832/sensors.c" />
+      <file file_name="../../bsp/boards/nrf52832/spi.c" />
+      <file file_name="../../bsp/boards/nrf52832/uart.c" />
+    </folder>
+    <folder Name="drivers">
+      <folder Name="crypto">
+        <file file_name="../../drivers/common/crypto/aes128.c" />
+        <file file_name="../../drivers/common/crypto/aes128.h" />
+        <file file_name="../../drivers/common/crypto/ccms.c" />
+        <file file_name="../../drivers/common/crypto/ccms.h" />
+        <file file_name="../../drivers/common/crypto/hkdf.c" />
+        <file file_name="../../drivers/common/crypto/hmac.c" />
+        <file file_name="../../drivers/common/crypto/sha-private.h" />
+        <file file_name="../../drivers/common/crypto/sha.h" />
+        <file file_name="../../drivers/common/crypto/sha224-256.c" />
+        <file file_name="../../drivers/common/crypto/usha.c" />
+      </folder>
+      <file file_name="../../drivers/common/openhdlc.c" />
+      <file file_name="../../drivers/common/openhdlc.h" />
+      <file file_name="../../drivers/common/opensensors.c" />
+      <file file_name="../../drivers/common/opensensors.h" />
+      <file file_name="../../drivers/common/openserial.c" />
+      <file file_name="../../drivers/common/openserial.h" />
+      <file file_name="../../drivers/common/opentimers.c" />
+      <file file_name="../../drivers/common/opentimers.h" />
+    </folder>
+    <folder Name="inc">
+      <file file_name="../../inc/af.h" />
+      <file file_name="../../inc/check_config.h" />
+      <file file_name="../../inc/config.h" />
+      <file file_name="../../inc/opendefs.h" />
+    </folder>
+    <folder Name="kernel">
+      <folder Name="openos">
+        <file file_name="../../kernel/openos/scheduler.c" />
+        <file file_name="../../kernel/openos/scheduler_types.h" />
+      </folder>
+      <file file_name="../../kernel/scheduler.h" />
+    </folder>
+    <folder Name="openapps">
+      <folder Name="c6t">
+        <file file_name="../../openapps/c6t/c6t.c" />
+        <file file_name="../../openapps/c6t/c6t.h" />
+      </folder>
+      <folder Name="cexample">
+        <file file_name="../../openapps/cexample/cexample.c" />
+        <file file_name="../../openapps/cexample/cexample.h" />
+      </folder>
+      <folder Name="cinfo">
+        <file file_name="../../openapps/cinfo/cinfo.c" />
+        <file file_name="../../openapps/cinfo/cinfo.h" />
+      </folder>
+      <folder Name="cinfrared">
+        <file file_name="../../openapps/cinfrared/cinfrared.c" />
+        <file file_name="../../openapps/cinfrared/cinfrared.h" />
+      </folder>
+      <folder Name="cjoin">
+        <file file_name="../../openapps/cjoin/cjoin.c" />
+        <file file_name="../../openapps/cjoin/cjoin.h" />
+        <file file_name="../../openapps/cjoin/cojp_cbor.c" />
+        <file file_name="../../openapps/cjoin/cojp_cbor.h" />
+      </folder>
+      <folder Name="cled">
+        <file file_name="../../openapps/cled/cled.c" />
+        <file file_name="../../openapps/cled/cled.h" />
+      </folder>
+      <folder Name="csensors">
+        <file file_name="../../openapps/csensors/csensors.c" />
+        <file file_name="../../openapps/csensors/csensors.h" />
+      </folder>
+      <folder Name="cstorm">
+        <file file_name="../../openapps/cstorm/cstorm.c" />
+        <file file_name="../../openapps/cstorm/cstorm.h" />
+      </folder>
+      <folder Name="cwellknown">
+        <file file_name="../../openapps/cwellknown/cwellknown.c" />
+        <file file_name="../../openapps/cwellknown/cwellknown.h" />
+      </folder>
+      <folder Name="rrt">
+        <file file_name="../../openapps/rrt/rrt.c" />
+        <file file_name="../../openapps/rrt/rrt.h" />
+      </folder>
+      <folder Name="uecho">
+        <file file_name="../../openapps/uecho/uecho.c" />
+        <file file_name="../../openapps/uecho/uecho.h" />
+      </folder>
+      <folder Name="uexpiration">
+        <file file_name="../../openapps/uexpiration/uexpiration.c" />
+        <file file_name="../../openapps/uexpiration/uexpiration.h" />
+      </folder>
+      <folder Name="uexpiration_monitor">
+        <file file_name="../../openapps/uexpiration_monitor/uexpiration_monitor.c" />
+        <file file_name="../../openapps/uexpiration_monitor/uexpiration_monitor.h" />
+      </folder>
+      <folder Name="uinject">
+        <file file_name="../../openapps/uinject/uinject.c" />
+        <file file_name="../../openapps/uinject/uinject.h" />
+      </folder>
+      <folder Name="userialbridge">
+        <file file_name="../../openapps/userialbridge/userialbridge.c" />
+        <file file_name="../../openapps/userialbridge/userialbridge.h" />
+      </folder>
+      <file file_name="../../openapps/openapps.c" />
+      <file file_name="../../openapps/openapps.h" />
+    </folder>
+    <folder Name="openstack">
+      <folder Name="02a-MAClow">
+        <file file_name="../../openstack/02a-MAClow/adaptive_sync.c" />
+        <file file_name="../../openstack/02a-MAClow/adaptive_sync.h" />
+        <file file_name="../../openstack/02a-MAClow/IEEE802154.c" />
+        <file file_name="../../openstack/02a-MAClow/IEEE802154.h" />
+        <file file_name="../../openstack/02a-MAClow/IEEE802154_security.c" />
+        <file file_name="../../openstack/02a-MAClow/IEEE802154_security.h" />
+        <file file_name="../../openstack/02a-MAClow/IEEE802154E.c" />
+        <file file_name="../../openstack/02a-MAClow/IEEE802154E.h" />
+        <file file_name="../../openstack/02a-MAClow/maclow.dox" />
+        <file file_name="../../openstack/02a-MAClow/topology.c" />
+        <file file_name="../../openstack/02a-MAClow/topology.h" />
+      </folder>
+      <folder Name="02b-MAChigh">
+        <file file_name="../../openstack/02b-MAChigh/msf.c" />
+        <file file_name="../../openstack/02b-MAChigh/msf.h" />
+        <file file_name="../../openstack/02b-MAChigh/neighbors.c" />
+        <file file_name="../../openstack/02b-MAChigh/neighbors.h" />
+        <file file_name="../../openstack/02b-MAChigh/schedule.c" />
+        <file file_name="../../openstack/02b-MAChigh/schedule.h" />
+        <file file_name="../../openstack/02b-MAChigh/sixtop.c" />
+        <file file_name="../../openstack/02b-MAChigh/sixtop.h" />
+      </folder>
+      <folder Name="03a-IPHC">
+        <file file_name="../../openstack/03a-IPHC/frag.c" />
+        <file file_name="../../openstack/03a-IPHC/frag.h" />
+        <file file_name="../../openstack/03a-IPHC/iphc.c" />
+        <file file_name="../../openstack/03a-IPHC/iphc.dox" />
+        <file file_name="../../openstack/03a-IPHC/iphc.h" />
+        <file file_name="../../openstack/03a-IPHC/lowpan.dox" />
+        <file file_name="../../openstack/03a-IPHC/openbridge.c" />
+        <file file_name="../../openstack/03a-IPHC/openbridge.h" />
+      </folder>
+      <folder Name="03b-IPv6">
+        <file file_name="../../openstack/03b-IPv6/forwarding.c" />
+        <file file_name="../../openstack/03b-IPv6/forwarding.h" />
+        <file file_name="../../openstack/03b-IPv6/icmpv6.c" />
+        <file file_name="../../openstack/03b-IPv6/icmpv6.h" />
+        <file file_name="../../openstack/03b-IPv6/icmpv6echo.c" />
+        <file file_name="../../openstack/03b-IPv6/icmpv6echo.h" />
+        <file file_name="../../openstack/03b-IPv6/icmpv6rpl.c" />
+        <file file_name="../../openstack/03b-IPv6/icmpv6rpl.h" />
+      </folder>
+      <folder Name="04-TRAN">
+        <folder Name="sock">
+          <file file_name="../../openstack/04-TRAN/sock/async.h" />
+          <file file_name="../../openstack/04-TRAN/sock/async_types.h" />
+          <file file_name="../../openstack/04-TRAN/sock/sock.c" />
+          <file file_name="../../openstack/04-TRAN/sock/sock.h" />
+          <file file_name="../../openstack/04-TRAN/sock/sock_internal.h" />
+          <file file_name="../../openstack/04-TRAN/sock/sock_types.h" />
+        </folder>
+        <file file_name="../../openstack/04-TRAN/udp.c" />
+        <file file_name="../../openstack/04-TRAN/udp.h" />
+      </folder>
+      <folder Name="cross-layers">
+        <file file_name="../../openstack/cross-layers/idmanager.c" />
+        <file file_name="../../openstack/cross-layers/idmanager.h" />
+        <file file_name="../../openstack/cross-layers/openqueue.c" />
+        <file file_name="../../openstack/cross-layers/openqueue.h" />
+        <file file_name="../../openstack/cross-layers/openrandom.c" />
+        <file file_name="../../openstack/cross-layers/openrandom.h" />
+        <file file_name="../../openstack/cross-layers/packetfunctions.c" />
+        <file file_name="../../openstack/cross-layers/packetfunctions.h" />
+      </folder>
+      <file file_name="openstack.c" />
+      <file file_name="openstack.h" />
+    </folder>
+    <folder Name="openweb">
+      <folder Name="opencoap">
+        <file file_name="../../openweb/opencoap/cborencoder.c" />
+        <file file_name="../../openweb/opencoap/cborencoder.h" />
+        <file file_name="../../openweb/opencoap/coap.c" />
+        <file file_name="../../openweb/opencoap/coap.h" />
+        <file file_name="../../openweb/opencoap/oscore.c" />
+        <file file_name="../../openweb/opencoap/oscore.h" />
+      </folder>
+      <file file_name="../../openweb/openweb.c" />
+      <file file_name="../../openweb/openweb.h" />
+    </folder>
+  </project>
+</solution>

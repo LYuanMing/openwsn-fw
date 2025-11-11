@@ -175,7 +175,7 @@
  *
  */
 #ifndef OPENWSN_UINJECT_C
-#define OPENWSN_UINJECT_C (0)
+#define OPENWSN_UINJECT_C (1)
 #endif
 
 /**
@@ -233,7 +233,7 @@
  *
  */
 #ifndef OPENWSN_UDP_C
-#define OPENWSN_UDP_C (0)
+#define OPENWSN_UDP_C (1)
 #endif
 
 /**
