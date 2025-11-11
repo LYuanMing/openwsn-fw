@@ -219,6 +219,10 @@ void radio_loadPacket(uint8_t* packet, uint16_t len) {
 
 void radio_txEnable(void) {
 
+#ifdef  SUPER_LOW_POWER
+    hfclock_start();
+#endif
+
     radio_vars.state  = RADIOSTATE_ENABLING_TX;
 
     NRF_RADIO->EVENTS_READY = (uint32_t)0;
@@ -245,6 +249,10 @@ void radio_txNow(void) {
 void radio_rxEnable(void) {
 
     radio_vars.state  = RADIOSTATE_ENABLING_RX;
+
+#ifdef  SUPER_LOW_POWER
+    hfclock_start();
+#endif
 
     if (NRF_RADIO->STATE != STATE_RX){
 
