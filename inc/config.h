@@ -289,7 +289,7 @@
  *
  */
 #ifndef OPENWSN_FORCETOPOLOGY_C
-#define OPENWSN_FORCETOPOLOGY_C (1)
+#define OPENWSN_FORCETOPOLOGY_C (0)
 #endif
 
 
@@ -383,7 +383,7 @@
  *
  */
 #ifndef DAGROOT
-#define DAGROOT (0)
+#define DAGROOT (1)
 #endif
 
 /**

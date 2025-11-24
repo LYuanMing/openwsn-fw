@@ -10,6 +10,9 @@
 #include <stdint.h>
 #include <string.h>
 #include "cmsis_gcc.h"
+#include "nrf52840.h"
+#include "nrf52840_bitfields.h"
+#include "nrf52840_peripherals.h"
 
 //=========================== defines =========================================
 
@@ -149,7 +152,7 @@
 
 //===== board initialization mode 
 #ifndef SUPER_LOW_POWER
-#define SUPER_LOW_POWER (1)
+#define SUPER_LOW_POWER (0)
 #endif
 
 //=========================== typedef  ========================================

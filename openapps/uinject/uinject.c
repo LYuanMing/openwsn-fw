@@ -1,5 +1,5 @@
 #include "config.h"
-
+#include "board.h"
 #if OPENWSN_UINJECT_C
 
 #include "opendefs.h"
