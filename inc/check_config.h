@@ -17,7 +17,8 @@
     !defined(IOTLAB_A8_M3) && \
     !defined(SAMR21_XPRO) && \
     !defined(NRF52840_DK) && \
-    !defined(NRF52832)
+    !defined(NRF52832) && \
+    !defined(NRF52833)
 #error 'Board name must be specified to check for configuration errors'
 #endif
 

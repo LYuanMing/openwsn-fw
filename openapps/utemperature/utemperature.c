@@ -7,29 +7,50 @@
 #include "IEEE802154E.h"
 #include "idmanager.h"
 #include "icmpv6rpl.h"
+#include "openrandom.h"
+#include "msf.h"
+
 #ifdef NRF52840_DK
 #include "nrf52840.h"
 #endif
 
-static sock_udp_t _sock;
-void utemperature_sock_handler(sock_udp_t *sock, sock_async_flags_t type, void *arg);
-void utemperature_get_temperature(int32_t* result);
-void utemperature_timer_cb(opentimers_id_t id);
+//=========================== defines =========================================
 
-opentimers_id_t timerID = 0;
-bool busySendingUinject = FALSE;
-static const uint8_t prefix_payload[] = "temperature: ";
-static const uint8_t dst_addr[] = {
+#define utemperature_TRAFFIC_RATE 1 ///> the value X indicates 1 packet/X minutes
+
+
+//=========================== variables =======================================
+typedef struct {
+    opentimers_id_t timerId;   ///< periodic timer which triggers transmission
+    uint16_t counter;  ///< incrementing counter which is written into the packet
+    uint16_t period;  ///< utemperature packet sending period>
+    bool busySendingutemperature;  ///< TRUE when busy sending an utemperature
+} utemperature_vars_t;
+
+static sock_udp_t _sock;
+static utemperature_vars_t utemperature_vars;
+
+static const uint8_t utemperature_payload[] = "utemperature";
+static const uint8_t utemperature_dst_addr[] = {
         0xbb, 0xbb, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01
 };
-static uint8_t payload[50];
-static uint8_t len = 0;
-static int32_t temperature;
 
+//=========================== prototypes ======================================
 
-void utemperature_init(void)
-{
+void utemperature_sock_handler(sock_udp_t *sock, sock_async_flags_t type, void *arg);
+
+void _utemperature_timer_cb(opentimers_id_t id);
+
+void _utemperature_task_cb(void);
+
+//=========================== public ==========================================
+
+void utemperature_init(void) {
+
+    // clear local variables
     memset(&_sock, 0, sizeof(sock_udp_t));
+    memset(&utemperature_vars, 0, sizeof(utemperature_vars_t));
+
     sock_udp_ep_t local;
     local.family = AF_INET6;
     local.port = WKP_UDP_INJECT;
@@ -38,23 +59,35 @@ void utemperature_init(void)
         openserial_printf("Could not create socket\n");
         return;
     }
+
     openserial_printf("Created a UDP socket\n");
 
     sock_udp_set_cb(&_sock, utemperature_sock_handler, NULL);
 
-    timerID = opentimers_create(TIMER_GENERAL_PURPOSE, TASKPRIO_UDP);
+    // start periodic timer
+    utemperature_vars.period = UINJECT_PERIOD_MS;
+    utemperature_vars.timerId = opentimers_create(TIMER_GENERAL_PURPOSE, TASKPRIO_UDP);
     opentimers_scheduleIn(
-            timerID,
+            utemperature_vars.timerId,
             UINJECT_PERIOD_MS,
             TIME_MS,
             TIMER_PERIODIC,
-            utemperature_timer_cb
+            _utemperature_timer_cb
     );
 }
 
+//=========================== private =========================================
 
-void utemperature_sock_handler(sock_udp_t *sock, sock_async_flags_t type, void *arg)
+void get_temperature(int32_t* result)
 {
+  NRF_TEMP->EVENTS_DATARDY = 0;
+  NRF_TEMP->TASKS_START = 1;
+  while (NRF_TEMP->EVENTS_DATARDY == 0) {}
+  *result = NRF_TEMP->TEMP;
+  return;
+}
+
+void utemperature_sock_handler(sock_udp_t *sock, sock_async_flags_t type, void *arg) {
     (void) arg;
 
     char buf[50];
@@ -77,31 +110,29 @@ void utemperature_sock_handler(sock_udp_t *sock, sock_async_flags_t type, void *
 
     if (type & SOCK_ASYNC_MSG_SENT) {
         owerror_t error = *(uint8_t*)arg;
-        if (error == E_FAIL) {            
-            openserial_printf("Fail to receive packet\r\n");
-
+        if (error == E_FAIL) {
+            LOG_ERROR(COMPONENT_UINJECT, ERR_MAXRETRIES_REACHED,
+                    (errorparameter_t) utemperature_vars.counter,
+                    (errorparameter_t) 0);
         }
-        // allow send next uinject packet
-        busySendingUinject = FALSE;
+        // allow send next utemperature packet
+        utemperature_vars.busySendingutemperature = FALSE;
     }
 }
 
-void utemperature_get_temperature(int32_t* result)
-{
-  *result = -1;
-  NRF_TEMP->EVENTS_DATARDY = 0;
-  NRF_TEMP->TASKS_START = 1;
-  while (NRF_TEMP->EVENTS_DATARDY == 0) {}
-  *result = NRF_TEMP->TEMP;
-  return;
+
+void _utemperature_timer_cb(opentimers_id_t id) {
+    // calling the task directly as the timer_cb function is executed in
+    // task mode by opentimer already
+    if (openrandom_get16b() < (0xffff / utemperature_TRAFFIC_RATE)) {
+        _utemperature_task_cb();
+    }
 }
 
-void utemperature_timer_cb(opentimers_id_t id)
-{
-    bool foundNeighbor;
+void _utemperature_task_cb(void) {
+    uint8_t asnArray[5];
     open_addr_t parentNeighbor;
-
-
+    bool foundNeighbor;
     // don't run if not synch
     if (ieee154e_isSynch() == FALSE) {
         return;
@@ -109,7 +140,7 @@ void utemperature_timer_cb(opentimers_id_t id)
 
     // don't run on dagroot
     if (idmanager_getIsDAGroot()) {
-        opentimers_destroy(id);
+        opentimers_destroy(utemperature_vars.timerId);
         return;
     }
 
@@ -122,8 +153,8 @@ void utemperature_timer_cb(opentimers_id_t id)
         return;
     }
 
-    if (busySendingUinject == TRUE) {
-        // don't continue if I'm still sending a previous uinject packet
+    if (utemperature_vars.busySendingutemperature == TRUE) {
+        // don't continue if I'm still sending a previous utemperature packet
         return;
     }
 
@@ -131,19 +162,27 @@ void utemperature_timer_cb(opentimers_id_t id)
     sock_udp_ep_t remote;
     remote.port = WKP_UDP_INJECT;
     remote.family = AF_INET6;
-    memcpy(remote.addr.ipv6, dst_addr, sizeof(dst_addr));
+    memcpy(remote.addr.ipv6, utemperature_dst_addr, sizeof(utemperature_dst_addr));
 
-    len = 0;
-    memcpy(&payload[len], prefix_payload, sizeof(prefix_payload) - 1);
-    len += sizeof(prefix_payload) - 1;
+    uint8_t payload[50];
+    uint8_t len = 0;
+    // add 'utemperature' string
+    memcpy(&payload[len], utemperature_payload, sizeof(utemperature_payload) - 1);
+    len += sizeof(utemperature_payload) - 1;
+
+    ieee154e_getAsn(asnArray);
+    msf_getPreviousNumCellsUsed(CELLTYPE_TX);
+    msf_getPreviousNumCellsUsed(CELLTYPE_RX);
+
+    int32_t temp;
+    get_temperature(&temp);
+    payload[len++] = (uint8_t)temp & 0xff;
+    payload[len++] = (uint8_t)((temp & 0xff00) >> 8);
+    payload[len++] = (uint8_t)((temp & 0xff0000) >> 16);
+    payload[len++] = (uint8_t)((temp & 0xff000000) >> 24);
     
-    utemperature_get_temperature(&temperature);
-    if(temperature != -1 && temperature <= 60) {
-        payload[len++] = '0' + ((temperature / 10) % 10);
-        payload[len++] = '0' + ((temperature) % 10);
-        
-        if (sock_udp_send(&_sock, payload, len, &remote) > 0) {
-            busySendingUinject = TRUE;
-        }
+    if (sock_udp_send(&_sock, payload, len, &remote) > 0) {
+        // set busySending to TRUE
+        utemperature_vars.busySendingutemperature = TRUE;
     }
 }

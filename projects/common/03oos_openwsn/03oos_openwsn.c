@@ -9,8 +9,7 @@
 #include "scheduler.h"
 #include "openstack.h"
 #include "opendefs.h"
-#include "openapps.h"
-
+#include "utemperature.h"
 int mote_main(void) {
    
    // initialize
@@ -20,10 +19,6 @@ int mote_main(void) {
    
    // start
    scheduler_start();
-
-#if !DAGROOT
-    openapps_init();
-#endif
 
    return 0; // this line should never be reached
 }
