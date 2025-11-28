@@ -175,7 +175,7 @@
  *
  */
 #ifndef OPENWSN_UINJECT_C
-#define OPENWSN_UINJECT_C (1)
+#define OPENWSN_UINJECT_C (0)
 #endif
 
 /**
@@ -383,7 +383,7 @@
  *
  */
 #ifndef DAGROOT
-#define DAGROOT (1)
+#define DAGROOT (0)
 #endif
 
 /**

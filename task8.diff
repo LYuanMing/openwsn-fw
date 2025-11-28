@@ -1,0 +1,67 @@
+diff --git a/inc/config.h b/inc/config.h
+index f76ce89c..2b518853 100644
+--- a/inc/config.h
++++ b/inc/config.h
+@@ -175,7 +175,7 @@
+  *
+  */
+ #ifndef OPENWSN_UINJECT_C
+-#define OPENWSN_UINJECT_C (1)
++#define OPENWSN_UINJECT_C (0)
+ #endif
+ 
+ /**
+@@ -383,7 +383,7 @@
+  *
+  */
+ #ifndef DAGROOT
+-#define DAGROOT (1)
++#define DAGROOT (0)
+ #endif
+ 
+ /**
+diff --git a/openapps/openapps.c b/openapps/openapps.c
+index 834ee9d8..4e635d04 100644
+--- a/openapps/openapps.c
++++ b/openapps/openapps.c
+@@ -52,6 +52,9 @@
+ #include "cjoin.h"
+ #endif
+ 
++#if OPENWSN_UTEMPERATURE_C
++#include "utemperature.h"
++#endif
+ //=========================== variables =======================================
+ 
+ //=========================== prototypes ======================================
+@@ -105,4 +108,8 @@ void openapps_init(void) {
+     umonitor_init();
+ #endif
+ 
++#if OPENWSN_UTEMPERATURE_C
++    utemperature_init();
++#endif
++
+ }
+diff --git a/projects/common/03oos_openwsn/03oos_openwsn.c b/projects/common/03oos_openwsn/03oos_openwsn.c
+index 578c3533..06aa9816 100644
+--- a/projects/common/03oos_openwsn/03oos_openwsn.c
++++ b/projects/common/03oos_openwsn/03oos_openwsn.c
+@@ -9,7 +9,7 @@
+ #include "scheduler.h"
+ #include "openstack.h"
+ #include "opendefs.h"
+-#include "uinject.h"
++#include "openapps.h"
+ 
+ int mote_main(void) {
+    
+@@ -22,7 +22,7 @@ int mote_main(void) {
+    scheduler_start();
+ 
+ #if !DAGROOT
+-    uinject_init();
++    openapps_init();
+ #endif
+ 
+    return 0; // this line should never be reached

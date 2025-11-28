@@ -9,7 +9,7 @@
 #include "scheduler.h"
 #include "openstack.h"
 #include "opendefs.h"
-#include "uinject.h"
+#include "openapps.h"
 
 int mote_main(void) {
    
@@ -22,7 +22,7 @@ int mote_main(void) {
    scheduler_start();
 
 #if !DAGROOT
-    uinject_init();
+    openapps_init();
 #endif
 
    return 0; // this line should never be reached
