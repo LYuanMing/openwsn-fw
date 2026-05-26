@@ -84,12 +84,16 @@ uint8_t neighbors_getNumTx(uint8_t index);
 
 uint8_t neighbors_getSequenceNumber(open_addr_t *address);
 
+uint8_t neighbors_getEnergyThrottleFactor(open_addr_t *address);
+
 // setters
 void neighbors_setNeighborRank(uint8_t index, dagrank_t rank);
 
 void neighbors_setNeighborNoResource(open_addr_t *address);
 
 void neighbors_setPreferredParent(uint8_t index, bool isPreferred);
+
+void neighbors_setNeighborThrottleFactor(open_addr_t *address, uint8_t throttle_factor);
 
 // interrogators
 bool neighbors_isStableNeighbor(open_addr_t *address);

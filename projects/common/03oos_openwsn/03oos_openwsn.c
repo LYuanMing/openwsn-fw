@@ -9,14 +9,15 @@
 #include "scheduler.h"
 #include "openstack.h"
 #include "opendefs.h"
-#include "utemperature.h"
+#include "energy_aware.h"
+
 int mote_main(void) {
    
    // initialize
    board_init();
    scheduler_init();
    openstack_init();
-   
+   energyMeasurementInit();
    // start
    scheduler_start();
 

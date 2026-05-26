@@ -17,7 +17,7 @@
 #include "idmanager.h"
 #include "schedule.h"
 #include "msf.h"
-
+#include "energy_aware.h"
 //=========================== define ==========================================
 
 // in seconds: sixtop maintaince is called every 30 seconds
@@ -262,17 +262,28 @@ owerror_t sixtop_request(
         len += 1;
     }
 
-    if (code != IANA_6TOP_CMD_CLEAR) {
+
+    if (code == IANA_6TOP_CMD_CLEAR) {
+        // record the neighbor in case no response  for clear
+        memcpy(&sixtop_vars.neighborToClearCells, neighbor, sizeof(open_addr_t));
+    }
+    else if (code == IANA_6TOP_CMD_THROTTLE) {
+        // append the throttle factor in the packet payload
+        if (packetfunctions_reserveHeader(&pkt, sizeof(uint8_t)) == E_FAIL) {
+            return E_FAIL;
+        }
+        *((uint8_t * )(pkt->payload)) = energy_vars.throttle_factor;
+        len += 1;
+    }
+    else {
         // append 6p celloptions
         if (packetfunctions_reserveHeader(&pkt, sizeof(uint8_t)) == E_FAIL) {
             return E_FAIL;
         }
         *((uint8_t * )(pkt->payload)) = cellOptions;
         len += 1;
-    } else {
-        // record the neighbor in case no response  for clear
-        memcpy(&sixtop_vars.neighborToClearCells, neighbor, sizeof(open_addr_t));
     }
+
 
     // append 6p metadata
     if (packetfunctions_reserveHeader(&pkt, sizeof(uint16_t)) == E_FAIL){
@@ -358,6 +369,9 @@ owerror_t sixtop_request(
                 break;
             case IANA_6TOP_CMD_CLEAR:
                 sixtop_vars.six2six_state = SIX_STATE_WAIT_CLEARREQUEST_SENDDONE;
+                break;
+            case IANA_6TOP_CMD_THROTTLE:
+                sixtop_vars.six2six_state = SIX_STATE_WAIT_THROTTLEREQUEST_SENDDONE;
                 break;
         }
     } else {
@@ -760,6 +774,9 @@ port_INLINE void sixtop_sendEB(void) {
         eb->payload[i] = ebIEsBytestream[i];
     }
 
+    // copy energy throttle factor to IE
+    eb->payload[EB_IE_LEN - 1] = energy_vars.throttle_factor;
+
     if (ebIEsBytestream[EB_SLOTFRAME_NUMLINK_OFFSET] > 1) {
         // reconstruct the MLME IE header since length changed
         eb_len = EB_IE_LEN - 2 + 5 * (ebIEsBytestream[EB_SLOTFRAME_NUMLINK_OFFSET] - 1);
@@ -933,6 +950,8 @@ void sixtop_six2six_sendDone(OpenQueueEntry_t *msg, owerror_t error) {
                 case SIX_STATE_WAIT_CLEARREQUEST_SENDDONE:
                     sixtop_vars.six2six_state = SIX_STATE_WAIT_CLEARRESPONSE;
                     break;
+                case SIX_STATE_WAIT_THROTTLEREQUEST_SENDDONE:
+                    sixtop_vars.six2six_state = SIX_STATE_WAIT_THROTTLERESPONSE;
                 default:
                     // should never happen
                     break;
@@ -993,6 +1012,11 @@ void sixtop_six2six_sendDone(OpenQueueEntry_t *msg, owerror_t error) {
                             &(msg->l2_nextORpreviousHop)
                     );
                     neighbors_resetSequenceNumber(&(msg->l2_nextORpreviousHop));
+                }
+
+                if (msg->l2_sixtop_command == IANA_6TOP_CMD_THROTTLE) {
+                    // the response of throttle command is delivered, then I should apply the throttle factor to the communication
+                    
                 }
             } else {
                 // the return code doesn't end up with SUCCESS
@@ -1168,6 +1192,13 @@ void sixtop_six2six_notifyReceive(
             if (code == IANA_6TOP_CMD_CLEAR) {
                 // the cells will be removed when the repsonse sendone successfully
                 // don't clear cells here
+                returnCode = IANA_6TOP_RC_SUCCESS;
+                break;
+            }
+
+            // throttle command
+            if (code == IANA_6TOP_CMD_THROTTLE) {
+                // when receive the throttle command request from a neighbor, apply the throttle factor and send the response 
                 returnCode = IANA_6TOP_RC_SUCCESS;
                 break;
             }
@@ -1580,6 +1611,9 @@ void sixtop_six2six_notifyReceive(
                             &(pkt->l2_nextORpreviousHop)
                     );
                     neighbors_resetSequenceNumber(&(pkt->l2_nextORpreviousHop));
+                    break;
+                case SIX_STATE_WAIT_THROTTLERESPONSE:
+                    // send the response of throttle cmd successfully and do nothing
                     break;
                 default:
                     // The sixtop response arrived after 6P TIMEOUT, or it's a duplicated response. Remove 6P request if I have.

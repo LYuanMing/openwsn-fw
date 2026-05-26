@@ -58,9 +58,10 @@ bool topology_isAcceptablePacket(ieee802154_header_iht* ieee802514_header) {
    returnVal=FALSE;
    switch (idmanager_getMyID(ADDR_64B)->addr_64b[7]) {
       // 79 is the root, 61 is measured node, 04, eb and 01 are the other node
-      case 0x79:
+      case 0x9c:
           if (
-              ieee802514_header->src.addr_64b[7] == 0x61
+              //ieee802514_header->src.addr_64b[7] == 0x79 ||
+              ieee802514_header->src.addr_64b[7] == 0x38
           ) {
               returnVal = TRUE;
           }

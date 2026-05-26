@@ -150,9 +150,14 @@
 
 #define NUMSENSORS 2
 
-//===== board initialization mode 
+//===== super low power mode
 #ifndef SUPER_LOW_POWER
 #define SUPER_LOW_POWER (0)
+#endif
+
+//===== energy throttle
+#ifndef ENERGY_THROTTLE
+#define ENERGY_THROTTLE (1)
 #endif
 
 //=========================== typedef  ========================================

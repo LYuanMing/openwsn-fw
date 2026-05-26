@@ -72,6 +72,15 @@ uint8_t neighbors_getNumTx(uint8_t index) {
     return neighbors_vars.neighbors[index].numTx;
 }
 
+uint8_t neighbors_getEnergyThrottleFactor(open_addr_t *address) {
+    uint8_t index;
+    for (index = 0; index < MAXNUMNEIGHBORS; index++) {
+        if (isThisRowMatching(address, index)) {
+            return neighbors_vars.neighbors[index].energy_throttle_factor;
+        }
+    }
+}
+
 /**
 \brief Find neighbor to which to send KA.
 
@@ -551,6 +560,17 @@ void neighbors_setNeighborNoResource(open_addr_t *address) {
     }
 }
 
+void neighbors_setNeighborThrottleFactor(open_addr_t *address, uint8_t throttle_factor) {
+    uint8_t i;
+    for (i = 0; i < MAXNUMNEIGHBORS; i++) {
+        if (isThisRowMatching(address, i)) {
+            neighbors_vars.neighbors[i].energy_throttle_factor = throttle_factor;
+            break;
+        }
+    }
+
+}
+
 void neighbors_setPreferredParent(uint8_t index, bool isPreferred) {
 
     neighbors_vars.neighbors[index].parentPreference = isPreferred;
@@ -704,6 +724,7 @@ void registerNewNeighbor(open_addr_t *address,
                 } else {
                     neighbors_vars.neighbors[i].joinPrio = DEFAULTJOINPRIORITY;
                 }
+                neighbors_vars.neighbors[i].energy_throttle_factor = 0;
                 break;
             }
             i++;

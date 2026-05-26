@@ -434,6 +434,7 @@ typedef struct {
     uint8_t sequenceNumber;
     uint8_t backoffExponenton;
     uint8_t backoff;
+    uint8_t energy_throttle_factor;
 } neighborRow_t;
 END_PACK
 

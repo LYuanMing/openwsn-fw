@@ -23,9 +23,10 @@ static const uint8_t chTemplate_default[] = {
 // refer to RFC8180: https://tools.ietf.org/html/rfc8180#appendix-A.1
 // ASN and join Metric are replaced later when sending an EB
 static const uint8_t ebIEsBytestream[] = {
-        0x1A, 0x88, 0x06, 0x1A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x1C, 0x00, 0x01,
-        0xC8, 0x00, 0x0A, 0x1B, 0x01, 0x00, SLOTFRAME_LENGTH, 0x00, SCHEDULE_MINIMAL_6TISCH_ACTIVE_CELLS, 0x00, 0x00,
-        0x00, 0x00, 0x0F
+        0x1B, 0x88, 
+        0x06, 0x1A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 
+        0x01, 0x1C, 0x00, 0x01, 0xC8, 0x00, 0x0A, 0x1B, 0x01, 0x00, SLOTFRAME_LENGTH, 0x00, SCHEDULE_MINIMAL_6TISCH_ACTIVE_CELLS, 0x00, 0x00, 0x00, 0x00, 0x0F, 
+        0x00 // energy throttle factor
 };
 //=========================== define ==========================================
 
@@ -36,7 +37,7 @@ static const uint8_t ebIEsBytestream[] = {
 #define EB_SLOTFRAME_LEN_OFFSET     20
 #define EB_SLOTFRAME_NUMLINK_OFFSET 22
 
-#define EB_IE_LEN                   28
+#define EB_IE_LEN                   29  // MLME IE Header + IE
 
 #define NUM_CHANNELS                16  // number of channels to channel hop on
 #define TXRETRIES                   15  // number of MAC retries before declaring failed

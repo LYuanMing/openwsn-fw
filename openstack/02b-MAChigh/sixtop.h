@@ -32,6 +32,7 @@
 #define IANA_6TOP_CMD_LIST          0x05 // CMD_LIST         | list the scheduled cells
 #define IANA_6TOP_CMD_SIGNAL        0x06 // CMD_SIGNAL       | signal command
 #define IANA_6TOP_CMD_CLEAR         0x07 // CMD_CLEAR        | clear all cells
+#define IANA_6TOP_CMD_THROTTLE      0x08 // CMD_THROTTLE     | enlarge the period of radio-on slot
 // 6P return code
 #define IANA_6TOP_RC_SUCCESS        0x00 // RC_SUCCESS       | operation succeeded
 #define IANA_6TOP_RC_EOL            0x01 // RC_EOL           | end of list
@@ -64,13 +65,15 @@ typedef enum {
     SIX_STATE_WAIT_COUNTREQUEST_SENDDONE = 0x04,
     SIX_STATE_WAIT_LISTREQUEST_SENDDONE = 0x05,
     SIX_STATE_WAIT_CLEARREQUEST_SENDDONE = 0x06,
+    SIX_STATE_WAIT_THROTTLEREQUEST_SENDDONE = 0x07,
     // waiting for response from the neighbor
-    SIX_STATE_WAIT_ADDRESPONSE = 0x07,
-    SIX_STATE_WAIT_DELETERESPONSE = 0x08,
-    SIX_STATE_WAIT_RELOCATERESPONSE = 0x09,
-    SIX_STATE_WAIT_COUNTRESPONSE = 0x0a,
-    SIX_STATE_WAIT_LISTRESPONSE = 0x0b,
-    SIX_STATE_WAIT_CLEARRESPONSE = 0x0c,
+    SIX_STATE_WAIT_ADDRESPONSE = 0x08,
+    SIX_STATE_WAIT_DELETERESPONSE = 0x09,
+    SIX_STATE_WAIT_RELOCATERESPONSE = 0x0a,
+    SIX_STATE_WAIT_COUNTRESPONSE = 0x0b,
+    SIX_STATE_WAIT_LISTRESPONSE = 0x0c,
+    SIX_STATE_WAIT_CLEARRESPONSE = 0x0d,
+    SIX_STATE_WAIT_THROTTLERESPONSE = 0x0e,
 } six2six_state_t;
 
 typedef enum {

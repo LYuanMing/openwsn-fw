@@ -41,7 +41,7 @@ void board_init(void) {
     leds_init();
 
 #if SUPER_LOW_POWER
-
+    
 #else
     debugpins_init();
     uart_init();
