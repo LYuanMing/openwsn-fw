@@ -16,8 +16,8 @@
 
 //=========================== definition ======================================
 
-#define DIO_PORTION 20
-#define DAO_PORTION 30
+#define DIO_PORTION 3
+#define DAO_PORTION 5
 
 //=========================== variables =======================================
 
@@ -133,7 +133,7 @@ void icmpv6rpl_init(void) {
 
     opentimers_scheduleIn(
             icmpv6rpl_vars.timerIdDIO,
-            SLOTFRAME_LENGTH * SLOTDURATION,
+            4 * SLOTFRAME_LENGTH * SLOTDURATION,
             TIME_MS,
             TIMER_PERIODIC,
             icmpv6rpl_timer_DIO_cb
@@ -178,7 +178,7 @@ void icmpv6rpl_init(void) {
     icmpv6rpl_vars.timerIdDAO = opentimers_create(TIMER_GENERAL_PURPOSE, TASKPRIO_RPL);
     opentimers_scheduleIn(
             icmpv6rpl_vars.timerIdDAO,
-            SLOTFRAME_LENGTH * SLOTDURATION,
+            8 * SLOTFRAME_LENGTH * SLOTDURATION,
             TIME_MS,
             TIMER_PERIODIC,
             icmpv6rpl_timer_DAO_cb
@@ -367,7 +367,6 @@ void icmpv6rpl_updateMyDAGrankAndParentSelection(void) {
     uint32_t tentativeDAGrank;
 
     open_addr_t newParent;
-
     // if I'm a DAGroot, my DAGrank is always MINHOPRANKINCREASE
     if ((idmanager_getIsDAGroot()) == TRUE) {
         // the dagrank is not set through setting command, set
@@ -403,7 +402,6 @@ void icmpv6rpl_updateMyDAGrankAndParentSelection(void) {
     previousDAGrank = icmpv6rpl_vars.myDAGrank;
     foundBetterParent = FALSE;
     icmpv6rpl_vars.haveParent = FALSE;
-
     // loop through neighbor table, update myDAGrank
     for (i = 0; i < MAXNUMNEIGHBORS; i++) {
         if (neighbors_isStableNeighborByIndex(i)) { // in use and link is stable
@@ -418,6 +416,7 @@ void icmpv6rpl_updateMyDAGrankAndParentSelection(void) {
             // get this neighbor's advertized rank
             neighborRank = neighbors_getNeighborRank(i);
             // if this neighbor has unknown/infinite rank, pass on it
+            openserial_printf("%d rank: %d\r\n",i, neighborRank);
             if (neighborRank == DEFAULTDAGRANK) continue;
             // compute tentative cost of full path to root through this neighbor
             tentativeDAGrank = (uint32_t) neighborRank + rankIncrease;
@@ -435,7 +434,7 @@ void icmpv6rpl_updateMyDAGrankAndParentSelection(void) {
             // if not low enough to justify switch, pass (i.e. hysterisis)
             if (
                     (previousDAGrank < tentativeDAGrank) ||
-                    (previousDAGrank - tentativeDAGrank < 2 * MINHOPRANKINCREASE)
+                    (previousDAGrank - tentativeDAGrank < (MINHOPRANKINCREASE))
                     ) {
                 continue;
             }
@@ -450,10 +449,12 @@ void icmpv6rpl_updateMyDAGrankAndParentSelection(void) {
                 icmpv6rpl_vars.ParentIndex = i;
                 icmpv6rpl_vars.rankIncrease = rankIncrease;
             }
+            openserial_printf("neighbor %d rank: %d, increase: %d\r\n", prevParentIndex, neighborRank, rankIncrease);
         }
     }
 
     if (foundBetterParent) {
+        openserial_printf("switch to %d\r\n", icmpv6rpl_vars.ParentIndex);
         icmpv6rpl_vars.haveParent = TRUE;
         if (!prevHadParent) {
             // in case preParent is killed before calling this function, clear the preferredParent flag
@@ -466,14 +467,7 @@ void icmpv6rpl_updateMyDAGrankAndParentSelection(void) {
             icmpv6rpl_updateNexthopAddress(&newParent);
 
 
-        } else {
-            if (icmpv6rpl_vars.ParentIndex == prevParentIndex) {
-                // report on the rank change if any, not on the deletion/creation of parent
-                if (icmpv6rpl_vars.myDAGrank != previousDAGrank) {
-                } else {
-                    // same parent, same rank, nothing to report about
-                }
-            } else {
+        } else if (icmpv6rpl_vars.ParentIndex != prevParentIndex) {
                 // clear neighbors preferredParent flag
                 neighbors_setPreferredParent(prevParentIndex, FALSE);
                 // set neighbors as preferred parent
@@ -482,17 +476,21 @@ void icmpv6rpl_updateMyDAGrankAndParentSelection(void) {
                 // update the upstream traffic nexthop address to new parent
                 neighbors_getNeighborEui64(&newParent, ADDR_64B, icmpv6rpl_vars.ParentIndex);
                 icmpv6rpl_updateNexthopAddress(&newParent);
-            }
         }
     } else {
         // restore routing table as we found it on entry
         icmpv6rpl_vars.myDAGrank = previousDAGrank;
         icmpv6rpl_vars.ParentIndex = prevParentIndex;
         icmpv6rpl_vars.haveParent = prevHadParent;
-        icmpv6rpl_vars.rankIncrease = prevRankIncrease;
+        if (icmpv6rpl_vars.haveParent == TRUE) {
+            icmpv6rpl_vars.rankIncrease = rankIncrease; 
+        } else {
+            icmpv6rpl_vars.rankIncrease = prevRankIncrease;
+        }
         // no change to report on
     }
 
+    //openserial_printf("index: %d, my rank: %d\r\n", icmpv6rpl_vars.ParentIndex, icmpv6rpl_vars.myDAGrank);
     // if my rank is reached to MAXDAGRANK
     if (icmpv6rpl_vars.myDAGrank == MAXDAGRANK) {
         icmpv6rpl_vars.lowestRankInHistory = MAXDAGRANK;

@@ -10,13 +10,17 @@
 #include "openrandom.h"
 #include "msf.h"
 
+#if ENERGY_THROTTLE
+#include "energy_aware.h"
+#endif
+
 #ifdef NRF52840_DK
 #include "nrf52840.h"
 #endif
 
 //=========================== defines =========================================
 
-#define utemperature_TRAFFIC_RATE 1 ///> the value X indicates 1 packet/X minutes
+#define utemperature_TRAFFIC_RATE 1 ///> the value X indicates 1 packet per 2X seconds
 
 
 //=========================== variables =======================================
@@ -97,14 +101,10 @@ void utemperature_sock_handler(sock_udp_t *sock, sock_async_flags_t type, void *
         int16_t res;
 
         if ((res = sock_udp_recv(sock, buf, sizeof(buf), 0, &remote)) >= 0) {
-            openserial_printf("Received %d bytes from remote endpoint:\n", res);
-            openserial_printf(" - port: %d", remote.port);
-            openserial_printf(" - addr: ", remote.port);
-            for(int i=0; i < 16; i ++)
-                openserial_printf("%x ", remote.addr.ipv6[i]);
-
-            openserial_printf("\n\n");
-            openserial_printf("Msg received: %s\n\n", buf);
+            //openserial_printf("Received %d bytes from remote endpoint:\n", res);
+            //openserial_printf(" - port: %d", remote.port);
+            //openserial_printf(" - addr: ", remote.port);
+            openserial_printf("msg received!\r\n");
         }
     }
 
@@ -174,15 +174,23 @@ void _utemperature_task_cb(void) {
     msf_getPreviousNumCellsUsed(CELLTYPE_TX);
     msf_getPreviousNumCellsUsed(CELLTYPE_RX);
 
-    int32_t temp;
-    get_temperature(&temp);
-    payload[len++] = (uint8_t)temp & 0xff;
-    payload[len++] = (uint8_t)((temp & 0xff00) >> 8);
-    payload[len++] = (uint8_t)((temp & 0xff0000) >> 16);
-    payload[len++] = (uint8_t)((temp & 0xff000000) >> 24);
+    // add my address
+    open_addr_t* myAddress;
+    myAddress = idmanager_getMyID(ADDR_64B); 
+    
+    memcpy(&payload[len], myAddress->addr_64b, 8);
+    len += 8;
+
+    //int32_t temp;
+    //get_temperature(&temp);
+    payload[len++] = (uint8_t)energy_vars.voltage_mV & 0xff;
+    payload[len++] = (uint8_t)((energy_vars.voltage_mV & 0xff00) >> 8);
+    payload[len++] = (uint8_t)((energy_vars.voltage_mV & 0xff0000) >> 16);
+    payload[len++] = (uint8_t)((energy_vars.voltage_mV & 0xff000000) >> 24);
     
     if (sock_udp_send(&_sock, payload, len, &remote) > 0) {
         // set busySending to TRUE
+        openserial_printf("send a packet\r\n");
         utemperature_vars.busySendingutemperature = TRUE;
     }
 }

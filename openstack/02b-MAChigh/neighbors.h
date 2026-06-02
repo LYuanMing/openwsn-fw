@@ -30,7 +30,7 @@
 #define MAXDAGRANK                0xffff
 #define DEFAULTDAGRANK            MAXDAGRANK
 #define MINHOPRANKINCREASE        256  // default value in RPL and Minimal 6TiSCH draft
-#define DAGMAXRANKINCREASE        768  // per RFC6550 https://tools.ietf.org/html/rfc6550#section-8.2.2.4 point 3
+#define DAGMAXRANKINCREASE        (MINHOPRANKINCREASE<<3)  // per RFC6550 https://tools.ietf.org/html/rfc6550#section-8.2.2.4 point 3
 
 #define DEFAULTJOINPRIORITY       0xff
 

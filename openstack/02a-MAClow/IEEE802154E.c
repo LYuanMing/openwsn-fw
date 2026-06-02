@@ -908,7 +908,7 @@ port_INLINE void activity_ti1ORri1(void) {
 
   // increment ASN (do this first so debug pins are in sync)
   incrementAsnOffset();
-  openserial_printf("now slot %d \r\n", ieee154e_vars.slotOffset);
+  // openserial_printf("now slot %d \r\n", ieee154e_vars.slotOffset);
   // wiggle debug pins
   debugpins_slot_toggle();
   if (ieee154e_vars.slotOffset == 0) {
@@ -1197,6 +1197,7 @@ port_INLINE void activity_ti2(void) {
   // change state
   changeState(S_TXDATAPREPARE);
 
+
 #ifdef SLOT_FSM_IMPLEMENTATION_MULTIPLE_TIMER_INTERRUPT
 #else
   // arm tt2
@@ -1269,7 +1270,7 @@ port_INLINE void activity_ti3(void) {
                               isr_ieee154e_timer                     // callback
   );
 
-  openserial_printf("txdatadelay radio on now\r\n");
+  //openserial_printf("txdatadelay radio on now\r\n");
   // give the 'go' to transmit
   radio_txNow();
 #endif
@@ -1439,7 +1440,7 @@ port_INLINE void activity_ti7(void) {
   // change state
   changeState(S_RXACKLISTEN);
 
-  openserial_printf("rxacklisten radio on now\r\n");
+  //openserial_printf("rxacklisten radio on now\r\n");
   // start listening
   radio_rxNow();
 #ifdef SLOT_FSM_IMPLEMENTATION_MULTIPLE_TIMER_INTERRUPT
@@ -1695,7 +1696,7 @@ port_INLINE void activity_ri3(void) {
   // change state
   changeState(S_RXDATALISTEN);
 
-  openserial_printf("rxdatalisten radio on now\r\n");
+  // openserial_printf("rxdatalisten radio on now\r\n");
   // give the 'go' to receive
   radio_rxNow();
 #ifdef SLOT_FSM_IMPLEMENTATION_MULTIPLE_TIMER_INTERRUPT
@@ -2114,7 +2115,7 @@ port_INLINE void activity_ri7(void) {
                               isr_ieee154e_timer                     // callback
   );
 
-  openserial_printf("txackdelay radio on now\r\n");
+  //openserial_printf("txackdelay radio on now\r\n");
   // give the 'go' to transmit
   radio_txNow();
 #endif

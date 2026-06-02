@@ -9,14 +9,16 @@
 #include "board_info.h"
 
 //=========================== define ==========================================
-
+#define VOLTAGE_REF 600
+#define VOLTAGE_GAIN 6
+#define ADC_RAW_TO_MV(raw)  (((uint32_t)(raw) * (VOLTAGE_REF * VOLTAGE_GAIN)) >> 10)
 //=========================== typedef =========================================
 
 //=========================== module variables ================================
-
+extern volatile int16_t adc_buffer;
 //=========================== prototypes ======================================
 
 void adc_init(void);
-uint16_t adc_read(void);
+void adc_start_sampling(void);
 
 #endif // __ADC_SENSOR_H__

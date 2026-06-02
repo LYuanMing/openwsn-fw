@@ -178,6 +178,13 @@
 #define OPENWSN_UINJECT_C (0)
 #endif
 
+
+
+#ifndef OPENWSN_UTEMPERATURE_C
+#define OPENWSN_UTEMPERATURE_C (1)
+#endif
+
+
 /**
  * \def OPENWSN_USERIALBRIDGE_C
  *

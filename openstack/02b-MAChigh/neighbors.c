@@ -8,6 +8,9 @@
 #include "openrandom.h"
 #include "msf.h"
 
+#if ENERGY_THROTTLE
+#include "energy_aware.h"
+#endif
 //=========================== variables =======================================
 
 static neighbors_vars_t neighbors_vars;
@@ -583,7 +586,53 @@ void neighbors_setPreferredParent(uint8_t index, bool isPreferred) {
 
 This really belongs to icmpv6rpl but it would require a much more complex interface to the neighbor table
 */
+#if ENERGY_THROTTLE
+uint16_t neighbors_getLinkMetric(uint8_t index) {
+    uint16_t f_penalty;
+    uint32_t rankIncreaseIntermediary; // stores intermediary results of rankIncrease calculation
+    uint32_t raw_link_metric;
+    uint32_t final_link_metric;
 
+    // we assume that this neighbor has already been checked for being in use
+    // calculate link cost to this neighbor
+      if (neighbors_vars.neighbors[index].numTxACK == 0) {
+          if (neighbors_vars.neighbors[index].numTx > DEFAULTLINKCOST) {
+              if (neighbors_vars.neighbors[index].numTx < MINIMAL_NUM_TX) {
+                  rankIncreaseIntermediary = (uint32_t)(neighbors_vars.neighbors[index].numTx * MINHOPRANKINCREASE) << 10;
+              } else {
+                  return 65535;
+              }
+          } else {
+              rankIncreaseIntermediary = (uint32_t)(MINHOPRANKINCREASE) << 10;
+          }
+      } else {
+        //6TiSCH minimal draft using OF0 for rank computation: ((3*numTx/numTxAck)-2)*minHopRankIncrease
+        // numTx is on 8 bits, so scaling up 10 bits won't lead to saturation
+        // but this <<10 followed by >>10 does not provide any benefit either. Result is the same.
+        rankIncreaseIntermediary = (((uint32_t)neighbors_vars.neighbors[index].numTx) << 10);
+        rankIncreaseIntermediary = (rankIncreaseIntermediary * MINHOPRANKINCREASE) /
+                                   ((uint32_t)neighbors_vars.neighbors[index].numTxACK);
+    }
+    if (rankIncreaseIntermediary >= (65536 << 10)) {
+        return 65535;
+    }
+    raw_link_metric = rankIncreaseIntermediary >> 10;
+    
+    // if PDR is really small, there is no need to continue
+    if (raw_link_metric >= 8869) { // 65535 * 1024 / 7566 = 8869
+        return 65535;
+    }
+
+    f_penalty = rpl_energy_penalty();
+    final_link_metric = (raw_link_metric * (uint32_t)f_penalty) >> 10; // f_penalty is the scaled penalty factor, so we have to restore it by `>> 10`
+
+    if (final_link_metric >= 65535) {
+        return 65535;
+    } else {
+        return (uint16_t)final_link_metric;
+    }
+}
+#else
 uint16_t neighbors_getLinkMetric(uint8_t index) {
     uint16_t rankIncrease;
     uint32_t rankIncreaseIntermediary; // stores intermediary results of rankIncrease calculation
@@ -617,7 +666,7 @@ uint16_t neighbors_getLinkMetric(uint8_t index) {
     }
     return rankIncrease;
 }
-
+#endif
 //===== maintenance
 
 void neighbors_removeOld(void) {

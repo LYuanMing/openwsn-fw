@@ -200,9 +200,16 @@ owerror_t openserial_printData(uint8_t *buffer, uint8_t length) {
     outputHdlcWrite(asn[2]);
     outputHdlcWrite(asn[3]);
     outputHdlcWrite(asn[4]);
+    #if OPENWSN_UTEMPERATURE_C
     for (i = 0; i < length; i++) {
+        if (buffer[i] == 'u' && buffer[i+1] == 't') {
+            break;
+        }
+    }
+    for (;i < length; i++) {
         outputHdlcWrite(buffer[i]);
     }
+    #endif
     outputHdlcClose();
 
     // start TX'ing
