@@ -34,16 +34,12 @@ int main(void) {
 
 void board_init(void) {
 
-    //// start hfclock
-    NRF_CLOCK->EVENTS_HFCLKSTARTED = 0;
-    NRF_CLOCK->TASKS_HFCLKSTART    = 1;
-    while (NRF_CLOCK->EVENTS_HFCLKSTARTED == 0);
-    leds_init();
 
-#if SUPER_LOW_POWER
+    leds_init();
     
+    //debugpins_init();
+#if SUPER_LOW_POWER
 #else
-    debugpins_init();
     uart_init();
 #endif
     sctimer_init();
@@ -61,9 +57,17 @@ void board_init(void) {
  * Puts the board to sleep
  */
 void board_sleep(void) {
+    // 1. 核心修复：如果使用了 FPU，必须在休眠前强行清除 FPU 中断挂起状态
+    #if defined(__FPU_USED) && (__FPU_USED == 1)
+    __set_FPSCR(__get_FPSCR() & ~(0x0000009FUL)); // 清除所有 FPU 异常标志
+    (void) __get_FPSCR();
+    NVIC_ClearPendingIRQ(FPU_IRQn);              // 清除 FPU 挂起的中断
+    #endif
 
+    // 2. 标准的 Nordic 官方无 OS 休眠序列
     __WFE();
-    __WFE();
+    __SEV();
+    __WFE(); // 这三步确保事件寄存器彻底被清干净
 }
 
 /**
@@ -77,18 +81,10 @@ void board_reset(void) {
 //=========================== private =========================================
 
 void enable_dcdc(void) {
+    NRF_POWER->DCDCEN = 1;
 
-    uint32_t status; 
-
-    status = NRF_POWER->MAINREGSTATUS;
-
-    if (status == 0) {
-
-        while (NRF_POWER->DCDCEN == 0){
-            // in normal voltage mode: PS1.2, page 59
-            NRF_POWER->DCDCEN = (uint32_t)1;
-        }
+    if (NRF_POWER->MAINREGSTATUS & POWER_MAINREGSTATUS_MAINREGSTATUS_Msk) {
+        NRF_POWER->DCDCEN0 = 1;
     }
 }
-
 //=========================== interrupt handlers ==============================

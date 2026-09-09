@@ -28,6 +28,7 @@ ieee154e_vars_t ieee154e_vars;
 ieee154e_stats_t ieee154e_stats;
 ieee154e_dbg_t ieee154e_dbg;
 
+bool long_sleep_flag = FALSE;
 //=========================== prototypes ======================================
 
 // SYNCHRONIZING
@@ -330,8 +331,12 @@ void ieee154e_orderToASNStructure(uint8_t *in, asn_t *val_asn) {
 This function executes in ISR mode, when the new slot timer fires.
 */
 void isr_ieee154e_newSlot(opentimers_id_t id) {
-  ieee154e_vars.startOfSlotReference = opentimers_getCurrentCompareValue();
-
+  //if(ieee154e_vars.asn.bytes0and1 % 10 == 0) {
+  //  ieee154e_vars.startOfSlotReference = opentimers_getCurrentCompareValue()-1;
+  //}
+  //else {
+    ieee154e_vars.startOfSlotReference = opentimers_getCurrentCompareValue();
+  //}
   opentimers_scheduleAbsolute(ieee154e_vars.timerId,                 // timerId
                               TsSlotDuration,                        // duration
                               ieee154e_vars.startOfSlotReference,    // reference
@@ -900,6 +905,7 @@ port_INLINE void activity_ti1ORri1(void) {
   uint8_t throttol_mask;
   uint32_t asn_low32;
   uint32_t current_sf;
+  frameLength_t frame_length;
 
   uint8_t i;
   uint8_t asn[5];
@@ -968,25 +974,25 @@ port_INLINE void activity_ti1ORri1(void) {
     // find the next one
     ieee154e_vars.nextActiveSlotOffset = schedule_getNextActiveSlotOffset();
     if (idmanager_getIsSlotSkip() && idmanager_getIsDAGroot() == FALSE) {
+      frame_length = schedule_getFrameLength();
       if (ieee154e_vars.nextActiveSlotOffset > ieee154e_vars.slotOffset) {
         ieee154e_vars.numOfSleepSlots = (ieee154e_vars.nextActiveSlotOffset - ieee154e_vars.slotOffset);
-      } else {
+      } 
+      else {
         ieee154e_vars.numOfSleepSlots =
-            (schedule_getFrameLength() + ieee154e_vars.nextActiveSlotOffset - ieee154e_vars.slotOffset);
+            (frame_length + ieee154e_vars.nextActiveSlotOffset - ieee154e_vars.slotOffset);
       }
-
       opentimers_scheduleAbsolute(ieee154e_vars.timerId,                               // timerId
                                   TsSlotDuration * (ieee154e_vars.numOfSleepSlots),    // duration
                                   ieee154e_vars.startOfSlotReference,                  // reference
                                   TIME_TICS,                                           // timetype
                                   isr_ieee154e_newSlot                                 // callback
       );
+      
+      // indicate that we have a long sleep after this slot
+      // and we should correct ASN after this slot end.
+      long_sleep_flag = TRUE;
       ieee154e_vars.slotDuration = TsSlotDuration * (ieee154e_vars.numOfSleepSlots);
-
-      // increase ASN by numOfSleepSlots-1 slots as at this slot is already incremented by 1
-      for (i = 0; i < ieee154e_vars.numOfSleepSlots - 1; i++) {
-        incrementAsnOffset();
-      }
     }
   } else {
     // this is NOT the next active slot, abort
@@ -2830,7 +2836,7 @@ void endSlot(void) {
 
   // turn off the radio
   radio_rfOff();
-
+  
   // compute the duty cycle if radio has been turned on
   if (ieee154e_vars.radioOnThisSlot == TRUE) {
     ieee154e_vars.radioOnTics += (sctimer_readCounter() - ieee154e_vars.radioOnInit);
@@ -2838,6 +2844,16 @@ void endSlot(void) {
 #ifdef SLOT_FSM_IMPLEMENTATION_MULTIPLE_TIMER_INTERRUPT
   sctimer_actionCancel(ACTION_ALL_RADIOTIMER_INTERRUPT);
 #else
+
+  if (long_sleep_flag) {
+    long_sleep_flag = FALSE;
+
+    uint8_t i;
+    for (i = 0; i < ieee154e_vars.numOfSleepSlots - 1; i++) {
+       incrementAsnOffset(); // now we can execute incrementAsnOffset safely
+    }
+  }
+
   // clear any pending timer
   opentimers_scheduleAbsolute(ieee154e_vars.timerId,                 // timerId
                               ieee154e_vars.slotDuration,            // duration

@@ -416,7 +416,6 @@ void icmpv6rpl_updateMyDAGrankAndParentSelection(void) {
             // get this neighbor's advertized rank
             neighborRank = neighbors_getNeighborRank(i);
             // if this neighbor has unknown/infinite rank, pass on it
-            openserial_printf("%d rank: %d\r\n",i, neighborRank);
             if (neighborRank == DEFAULTDAGRANK) continue;
             // compute tentative cost of full path to root through this neighbor
             tentativeDAGrank = (uint32_t) neighborRank + rankIncrease;
@@ -449,12 +448,11 @@ void icmpv6rpl_updateMyDAGrankAndParentSelection(void) {
                 icmpv6rpl_vars.ParentIndex = i;
                 icmpv6rpl_vars.rankIncrease = rankIncrease;
             }
-            openserial_printf("neighbor %d rank: %d, increase: %d\r\n", prevParentIndex, neighborRank, rankIncrease);
         }
     }
 
     if (foundBetterParent) {
-        openserial_printf("switch to %d\r\n", icmpv6rpl_vars.ParentIndex);
+        openserial_printf("switch to %d, rank: %d, \r\n", icmpv6rpl_vars.ParentIndex, icmpv6rpl_vars.myDAGrank);
         icmpv6rpl_vars.haveParent = TRUE;
         if (!prevHadParent) {
             // in case preParent is killed before calling this function, clear the preferredParent flag

@@ -22,6 +22,10 @@
 
 void debugpins_init(void);
 
+void debugpins_start_toggle(void);
+void debugpins_start_clr(void);
+void debugpins_start_set(void);
+
 void debugpins_frame_toggle(void);
 void debugpins_frame_clr(void);
 void debugpins_frame_set(void);

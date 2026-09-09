@@ -15,8 +15,8 @@
 
 //=========================== defines =========================================
 
-#define UART_RX_PIN       NRF_GPIO_PIN_MAP(0,8) // p0.08
-#define UART_TX_PIN       NRF_GPIO_PIN_MAP(0,6) // p0.06
+#define UART_RX_PIN       NRF_GPIO_PIN_MAP(0,2) // p0.08
+#define UART_TX_PIN       NRF_GPIO_PIN_MAP(0,4) // p0.06
 #define UART_CTS_PIN      NRF_GPIO_PIN_MAP(0,7) // p0.07
 #define UART_RTS_PIN      NRF_GPIO_PIN_MAP(0,5) // p0.05
 

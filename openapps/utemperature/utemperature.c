@@ -181,13 +181,22 @@ void _utemperature_task_cb(void) {
     memcpy(&payload[len], myAddress->addr_64b, 8);
     len += 8;
 
-    //int32_t temp;
-    //get_temperature(&temp);
-    payload[len++] = (uint8_t)energy_vars.voltage_mV & 0xff;
-    payload[len++] = (uint8_t)((energy_vars.voltage_mV & 0xff00) >> 8);
-    payload[len++] = (uint8_t)((energy_vars.voltage_mV & 0xff0000) >> 16);
-    payload[len++] = (uint8_t)((energy_vars.voltage_mV & 0xff000000) >> 24);
-    
+    #if ENERGY_THROTTLE
+        payload[len++] = (uint8_t)energy_vars.voltage_mV & 0xff;
+        payload[len++] = (uint8_t)((energy_vars.voltage_mV & 0xff00) >> 8);
+        payload[len++] = (uint8_t)((energy_vars.voltage_mV & 0xff0000) >> 16);
+        payload[len++] = (uint8_t)((energy_vars.voltage_mV & 0xff000000) >> 24);
+    #else
+
+        int32_t temp;
+        get_temperature(&temp);
+
+        payload[len++] = (uint8_t)temp & 0xff;
+        payload[len++] = (uint8_t)((temp & 0xff00) >> 8);
+        payload[len++] = (uint8_t)((temp & 0xff0000) >> 16);
+        payload[len++] = (uint8_t)((temp & 0xff000000) >> 24);
+    #endif
+
     if (sock_udp_send(&_sock, payload, len, &remote) > 0) {
         // set busySending to TRUE
         openserial_printf("send a packet\r\n");

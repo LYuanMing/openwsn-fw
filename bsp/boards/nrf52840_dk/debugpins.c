@@ -13,10 +13,11 @@
 
 // board debug PINS defines
 
+#define DEBUGPIN_START  NRF_GPIO_PIN_MAP(0,25)
 #define DEBUGPIN_FRAME  NRF_GPIO_PIN_MAP(0,26)
-#define DEBUGPIN_SLOT   NRF_GPIO_PIN_MAP(0,27)
+#define DEBUGPIN_SLOT   NRF_GPIO_PIN_MAP(0,2)
 #define DEBUGPIN_FSM    NRF_GPIO_PIN_MAP(0,28)
-#define DEBUGPIN_TASK   NRF_GPIO_PIN_MAP(0,29)
+#define DEBUGPIN_TASK   NRF_GPIO_PIN_MAP(0,4)
 #define DEBUGPIN_ISR    NRF_GPIO_PIN_MAP(0,30)
 #define DEBUGPIN_RADIO  NRF_GPIO_PIN_MAP(0,31)
 
@@ -34,8 +35,30 @@ void debugpins_init(void) {
     NRF_P0->DIRSET = 1<<DEBUGPIN_TASK;
     NRF_P0->DIRSET = 1<<DEBUGPIN_ISR;
     NRF_P0->DIRSET = 1<<DEBUGPIN_RADIO;
+    NRF_P0->DIRSET = 1<<DEBUGPIN_START;
 
 }
+
+
+void debugpins_start_set(void) {
+
+    NRF_P0->OUTSET = 1<<DEBUGPIN_START;
+}
+
+void debugpins_start_clr(void) {
+
+    NRF_P0->OUTCLR = 1<<DEBUGPIN_START;
+}
+
+void debugpins_start_toggle(void) {
+
+    if ((NRF_P0->OUT & (1<<DEBUGPIN_START))!=0) {        
+        NRF_P0->OUTCLR = 1<<DEBUGPIN_START;
+    } else {
+        NRF_P0->OUTSET = 1<<DEBUGPIN_START;
+    }
+}
+
 
 void debugpins_frame_set(void) {
 

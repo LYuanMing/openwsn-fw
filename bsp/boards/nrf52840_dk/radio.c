@@ -273,12 +273,17 @@ void radio_txEnable(void) {
 #if  SUPER_LOW_POWER
     hfclock_start();
     
-    NRF_RADIO->EVENTS_DISABLED = 0;
+    if (NRF_RADIO->STATE != 0) {
 
-    // stop radio
-    NRF_RADIO->TASKS_DISABLE = (uint32_t)(1);
+        NRF_RADIO->EVENTS_DISABLED = 0;
 
-    while(NRF_RADIO->EVENTS_DISABLED==0);
+        // stop radio
+        NRF_RADIO->TASKS_DISABLE = (uint32_t)(1);
+
+        while(NRF_RADIO->EVENTS_DISABLED==0);
+
+    }
+
 #endif
     radio_vars.state  = RADIOSTATE_ENABLING_TX;
 
@@ -309,12 +314,16 @@ void radio_rxEnable(void) {
 #if  SUPER_LOW_POWER
     hfclock_start();
 
-    NRF_RADIO->EVENTS_DISABLED = 0;
 
-    // stop radio
-    NRF_RADIO->TASKS_DISABLE = (uint32_t)(1);
+    if (NRF_RADIO->STATE != 0) {
 
-    while(NRF_RADIO->EVENTS_DISABLED==0);
+        NRF_RADIO->EVENTS_DISABLED = 0;
+
+        // stop radio
+        NRF_RADIO->TASKS_DISABLE = (uint32_t)(1);
+
+        while(NRF_RADIO->EVENTS_DISABLED==0);
+    }
 
     NRF_RADIO->EVENTS_READY = (uint32_t)0;
 
@@ -479,7 +488,6 @@ static uint8_t ble_channel_to_frequency(uint8_t channel) {
 }
 
 static void hfclock_start(void) {
-    
     NRF_CLOCK->EVENTS_HFCLKSTARTED = 0;
     NRF_CLOCK->TASKS_HFCLKSTART    = 1;
     while (NRF_CLOCK->EVENTS_HFCLKSTARTED == 0);
@@ -541,8 +549,6 @@ kick_scheduler_t radio_isr(void){
 void RADIO_IRQHandler(void) {
 
     debugpins_isr_set();
-
     radio_isr();
-
     debugpins_isr_clr();
 }

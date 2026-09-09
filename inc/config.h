@@ -181,7 +181,7 @@
 
 
 #ifndef OPENWSN_UTEMPERATURE_C
-#define OPENWSN_UTEMPERATURE_C (1)
+#define OPENWSN_UTEMPERATURE_C (0)
 #endif
 
 

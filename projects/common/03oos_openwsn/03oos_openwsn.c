@@ -10,6 +10,7 @@
 #include "openstack.h"
 #include "opendefs.h"
 #include "energy_aware.h"
+#include "debugpins.h"
 
 int mote_main(void) {
    

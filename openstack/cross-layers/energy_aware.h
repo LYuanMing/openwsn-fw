@@ -39,6 +39,7 @@ extern energy_vars_t energy_vars;
 void task_energyMeasurement(void);
 void energyMeasurementInit(void);
 uint16_t rpl_energy_penalty(void);
+void update_throttle_factor(void);
 
 #ifdef __cplusplus
 }

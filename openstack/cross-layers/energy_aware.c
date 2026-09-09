@@ -1,6 +1,7 @@
 #include "energy_aware.h"
 #include "openserial.h"
 #include "adc.h"
+#include "debugpins.h"
 
 energy_vars_t energy_vars;
 extern ieee154e_vars_t ieee154e_vars;
@@ -26,7 +27,7 @@ void energyMeasurementInit(void)
     index = 0;
     energy_vars.e_surplus_uJ = 0;
     energy_vars.throttle_factor = 0;
-    adc_init();
+    //adc_init();
 }
 
 void task_energyMeasurement(void)
@@ -35,36 +36,52 @@ void task_energyMeasurement(void)
         energy_vars.throttle_factor = 0;
         energy_vars.e_surplus_uJ = E_MAX;
     } else {
-        adc_start_sampling();
-//        index += 1;
-//        if(index % 3 == 0) {
-//#if FIXED_ENERGY 
-//            energy_vars.e_surplus_uJ = CALCULATE_ENERGY_UJ(3200);
-//#else 
-//            if (direction == 0) {
-//                // ---------- 放电阶段 ----------
-//                if (current_voltage >= (MIN_VOLTAGE_MV + 100)) {
-//                    current_voltage -= 100;
-//                } else {
-//                    current_voltage = MIN_VOLTAGE_MV;
-//                    direction = 1;
-//                }
-//            } else {
-//                  // ---------- 充电阶段 ----------
-//                  if (current_voltage <= (MAX_VOLTAGE_MV - 100)) {
-//                      current_voltage += 100;
-//                  } else {
-//                      current_voltage = MAX_VOLTAGE_MV;
-//                      direction = 0;
-//                  }
-//            }
-//            energy_vars.e_surplus_uJ = CALCULATE_ENERGY_UJ(current_voltage);
-//#endif
+        //adc_start_sampling();
+        index += 1;
+        if(index % 4 == 0) {
+#if FIXED_ENERGY 
+            energy_vars.voltage_mV = 2200;
+            energy_vars.e_surplus_uJ = CALCULATE_ENERGY_UJ(energy_vars.voltage_mV);
+#else 
+            if (direction == 0) {
+                // ---------- 放电阶段 ----------
+                if (current_voltage >= (MIN_VOLTAGE_MV + 100)) {
+                    current_voltage -= 100;
+                } else {
+                    current_voltage = MIN_VOLTAGE_MV;
+                    direction = 1;
+                }
+            } else {
+                  // ---------- 充电阶段 ----------
+                  if (current_voltage <= (MAX_VOLTAGE_MV - 100)) {
+                      current_voltage += 100;
+                  } else {
+                      current_voltage = MAX_VOLTAGE_MV;
+                      direction = 0;
+                  }
+            }
+            energy_vars.voltage_mV = current_voltage;
+            energy_vars.e_surplus_uJ = CALCULATE_ENERGY_UJ(current_voltage);
+#endif
+            update_throttle_factor();
             //openserial_printf("current energy: %d\r\n", energy_vars.e_surplus_uJ);
-        //} 
+        } 
     }
+
 }
 
+void update_throttle_factor(void)
+{
+    if (energy_vars.voltage_mV >= 3500) {
+        energy_vars.throttle_factor = 0;
+    } else if (energy_vars.voltage_mV >= 3000) {
+        energy_vars.throttle_factor = 1;
+    } else if (energy_vars.voltage_mV >= 2500) {
+        energy_vars.throttle_factor = 2;
+    } else {
+        energy_vars.throttle_factor = 3;
+    }
+}
 
 void SAADC_IRQHandler(void) {
     if (NRF_SAADC->EVENTS_STARTED != 0) {
@@ -85,6 +102,8 @@ void SAADC_IRQHandler(void) {
         } else {
             energy_vars.voltage_mV = ADC_RAW_TO_MV(adc_buffer);
         }
+        update_throttle_factor();
+
         energy_vars.e_surplus_uJ = CALCULATE_ENERGY_UJ(energy_vars.voltage_mV);
     }
 }
