@@ -6,7 +6,11 @@
 energy_vars_t energy_vars;
 extern ieee154e_vars_t ieee154e_vars;
 
-static uint8_t index;
+// renamed from `index` for toolchain compatibility: newlib declares the legacy
+// BSD function index() in <strings.h> (pulled in via board_info.h -> <string.h>),
+// which collides with a file-scope variable of that name. SEGGER's libc does
+// not declare index(), so the original name compiled under Embedded Studio.
+static uint8_t ea_index;
 static uint8_t direction = 0;
 static uint16_t current_voltage = 4200;
 #define FIXED_ENERGY 1
@@ -24,7 +28,7 @@ const uint16_t F_ENERGY_LUT_SIZE =
 
 void energyMeasurementInit(void)
 {
-    index = 0;
+    ea_index = 0;
     energy_vars.e_surplus_uJ = 0;
     energy_vars.throttle_factor = 0;
     //adc_init();
@@ -37,8 +41,8 @@ void task_energyMeasurement(void)
         energy_vars.e_surplus_uJ = E_MAX;
     } else {
         //adc_start_sampling();
-        index += 1;
-        if(index % 4 == 0) {
+        ea_index += 1;
+        if(ea_index % 4 == 0) {
 #if FIXED_ENERGY 
             energy_vars.voltage_mV = 2200;
             energy_vars.e_surplus_uJ = CALCULATE_ENERGY_UJ(energy_vars.voltage_mV);

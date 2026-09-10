@@ -1,5 +1,8 @@
 import os
-import distutils.sysconfig
+try:
+    import distutils.sysconfig
+except ImportError:  # distutils removed in Python 3.12+; only used for python-board builds
+    distutils = None
 
 Import('env')
 
