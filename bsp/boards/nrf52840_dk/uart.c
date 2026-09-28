@@ -94,6 +94,7 @@ void uart_init(void) {
 void uart_setCallbacks(uart_tx_cbt txCb, uart_rx_cbt rxCb) {
     uart_vars.txCb = txCb;
     uart_vars.rxCb = rxCb;
+    uart_bootProbe(txCb ? "cb|" : "cb0|");   // DEBUG
 }
 
 void    uart_enableInterrupts(void) {
@@ -185,4 +186,28 @@ kick_scheduler_t uart_rx_isr(void) {
     }
 
     return DO_NOT_KICK_SCHEDULER;
+}
+//=========================== debug probe =====================================
+// Blocking, polled TX: writes each byte and waits for EVENTS_TXDRDY.
+// Bypasses openserial entirely, separating "can the UART transmit at all"
+// from "is the openserial interrupt chain alive".
+void uart_bootProbe(const char *tag) {
+    // The UART TX interrupt clears EVENTS_TXDRDY, which would race with the poll
+    // below (first attempt printed one tag then hung). Mask the TX interrupt for
+    // the duration of the probe, and disable interrupts so nothing else fires.
+    uint32_t primask = __get_PRIMASK();
+    __disable_irq();
+    NRF_UART0->INTENCLR = (1u << UART_INTEN_TXDRDY_POS);
+    while (*tag) {
+        NRF_UART0->EVENTS_TXDRDY = 0;
+        NRF_UART0->TXD = (uint8_t)(*tag++);
+        while (NRF_UART0->EVENTS_TXDRDY == 0) { }
+    }
+    NRF_UART0->EVENTS_TXDRDY = 0;
+    NRF_UART0->INTENSET = (1u << UART_INTEN_TXDRDY_POS);
+    if (primask == 0) { __enable_irq(); }
+}
+
+uint8_t uart_hasCallbacks(void) {
+    return (uart_vars.txCb != 0) ? 1 : 0;
 }

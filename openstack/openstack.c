@@ -55,11 +55,13 @@ void openstack_init(void) {
 
     //===== drivers
     opentimers_init();
-#if SUPER_LOW_POWER
-
-#else
+    // FIX (battery-free perf build): openserial_init() must run unconditionally.
+    // Under SUPER_LOW_POWER=1 it was skipped, so uart_setCallbacks() never ran
+    // (uart_vars.txCb stayed NULL), the debugPrint periodic timer was never
+    // created, and the TX chain deadlocked after the first byte
+    // (observed: outputBufIdxW=13 IdxR=1 fBusyFlushing=1, TXD stuck at 0x7E).
+    // Boot probe confirmed it: "A|P|S|~B|t|C|" -- the 't|' means txCb == NULL.
     openserial_init();
-#endif
 
     //===== stack
     //-- cross-layer
