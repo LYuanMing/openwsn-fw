@@ -65,13 +65,26 @@ typedef struct {
 
     uint8_t  raw[WIND_FIELD_RAW_LEN]; // 最近一帧 0x0000 起的原始数据字节（上板核对标度用）
 
-    volatile bool is_ready;           // 核心就绪标志位，供上层 OpenWSN 消费
+    // ---- 新增：帧身份与时效（没有这两样，上层无法区分"刚到的数"和"卡住的旧数"）----
+    uint32_t seq;                     // 有效帧序号，每收到一帧 +1（0 = 还没收到过）
+    uint32_t t_ms;                    // 最近一帧的本地时间戳（modbus_millis()）
+
+    volatile bool is_ready;           // 核心就绪标志位，供上层 OpenWSN 消费 
+
 } dev_wind_field_data_t;
 
 
-void trigger_read_calibration_params(void);
-void trigger_read_communication_params(void);
-void trigger_read_wind_field_data(void);
-void trigger_read_sensor_version(void);
+/* 四个 trigger 全部返回 bool：false = 总线忙或参数非法。
+   返回值必须检查，否则请求被丢弃时上层毫无察觉（modbus 层只会计 reject/busy）。 */
+bool trigger_read_calibration_params(void);
+bool trigger_read_communication_params(void);
+bool trigger_read_wind_field_data(void);
+bool trigger_read_sensor_version(void);
+
+/** @brief 距最后一帧风场数据的毫秒数（未收到过帧时返回一个很大的值） */
+uint32_t wind_field_data_age_ms(void);
+
+/** @brief 数据是否新鲜：已收到过帧且 age <= max_age_ms */
+bool wind_field_data_is_fresh(uint32_t max_age_ms);
 
 #endif

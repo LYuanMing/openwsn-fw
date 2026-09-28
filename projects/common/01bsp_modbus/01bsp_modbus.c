@@ -27,7 +27,6 @@ extern dev_calibration_param_t calibration_params;
 extern dev_communication_param_t communication_params;
 extern dev_wind_field_data_t wind_field_data;
 extern dev_sensor_version_t sensor_version;
-extern modbus_bus_state_t g_bus_state;
 
 //=========================== 可调参数 ======================================
 
@@ -35,6 +34,10 @@ extern modbus_bus_state_t g_bus_state;
 #define REPORT_PERIOD_MS        1000    // 风场数据打印周期（约等于传感器更新率）
 #define STATS_PERIOD_MS         2000    // 链路心跳打印周期
 #define UART_TX_GUARD_LOOPS     2000000 // 单字节发送等待兜底上限
+#define WIND_STALE_MS           3000    // 风场数据被判定为"陈旧"的年龄阈值（轮询 200ms，3s 等于连续丢 15 帧）
+
+// 请求被 modbus 层拒绝（总线忙/参数非法）的次数：上层不检查返回值就会静默丢帧
+static uint32_t s_drop_cnt = 0;
 
 //=========================== UART 变量 =====================================
 
@@ -143,7 +146,11 @@ static void tx_add_fixed(float v, unsigned decimals) {
 static void report_wind_data(void)
 {
     tx_reset();
-    tx_addf("\r\n===== RS-CFSFX-N01-3D wind @%lu ms =====\r\n", (unsigned long)modbus_millis());
+    tx_addf("\r\n===== RS-CFSFX-N01-3D wind @%lu ms | seq=%lu age=%lums %s =====\r\n",
+            (unsigned long)modbus_millis(),
+            (unsigned long)wind_field_data.seq,
+            (unsigned long)wind_field_data_age_ms(),
+            wind_field_data_is_fresh(WIND_STALE_MS) ? "" : "<<STALE>>");
 
     tx_addf("vec  : ");
     tx_add_fixed(wind_field_data.vector_avg_wind_speed, 2);
@@ -195,11 +202,16 @@ static void report_link_stats(uint32_t now_ms, uint32_t last_err_cnt)
     uint8_t err_buf[MODBUS_RX_BUF_SIZE];
 
     tx_reset();
-    tx_addf("[STAT] %4lu s | frame=%lu timeout=%lu badframe=%lu uart_err=%lu maxgap=%lums | state=%u\r\n",
+    tx_addf("[STAT] %4lu s | frame=%lu timeout=%lu badframe=%lu retry=%lu txtmo=%lu ovf=%lu rej=%lu drop=%lu uart_err=%lu maxgap=%lums | state=%u\r\n",
             (unsigned long)(now_ms / 1000),
             (unsigned long)modbus_get_frame_count(),
             (unsigned long)modbus_get_timeout_count(),
             (unsigned long)modbus_get_error_count(),
+            (unsigned long)modbus_get_retry_count(),
+            (unsigned long)modbus_get_tx_timeout_count(),
+            (unsigned long)modbus_get_overflow_count(),
+            (unsigned long)modbus_get_reject_count(),
+            (unsigned long)s_drop_cnt,
             (unsigned long)modbus_get_uart_error_count(),
             (unsigned long)modbus_get_max_frame_gap(),
             (unsigned)g_bus_state);
@@ -210,7 +222,10 @@ static void report_link_stats(uint32_t now_ms, uint32_t last_err_cnt)
         uint16_t n = modbus_get_last_error(err_buf, sizeof(err_buf));
         tx_addf("[BAD ]");
         tx_add_hex(err_buf, n);
-        tx_addf("  n=%u maxgap=%ums\r\n", (unsigned)n, (unsigned)modbus_get_last_error_maxgap());
+        tx_addf("  n=%u maxgap=%ums exc=0x%02X\r\n",
+                (unsigned)n,
+                (unsigned)modbus_get_last_error_maxgap(),
+                (unsigned)modbus_get_last_exception());
     }
     tx_flush();
 }
@@ -228,12 +243,29 @@ int mote_main(void)
     tx_reset();
     tx_addf("\r\n[BOOT] Renke RS-CFSFX-N01-3D / Modbus-RTU 4800 8N1 addr=0x01\r\n");
     tx_addf("[BOOT] sensor: UARTE1 P0.27(TX)/P0.26(RX) | debug: UART0 P0.06/P0.08 = J-Link VCOM\r\n");
+
+    // 时基自检：get_system_time_ms() 读 RTC0（由 sctimer_init() 起）。
+    //   哪个工程忘了调 sctimer_init()，时间戳就恒为 0 —— 于是所有超时判据
+    //   永远不成立，状态机会永久卡在 RX_WAIT，而且一个计数都不会涨。主动验一次。
+    {
+        uint32_t t0 = modbus_millis();
+        for (volatile uint32_t spin = 0; spin < 200000; spin++) { }
+        uint32_t t1 = modbus_millis();
+        if (t1 == t0) {
+            tx_addf("[WARN] RTC0 time base NOT running (t=%lu twice): bus timeouts cannot fire!\r\n",
+                    (unsigned long)t0);
+        } else {
+            tx_addf("[BOOT] time base ok, RTC0 advanced %lu ms during this check\r\n", (unsigned long)(t1 - t0));
+        }
+    }
     tx_flush();
 
     modbus_init();
 
     // 上电先读一次版本寄存器，确认 485 链路通不通
-    trigger_read_sensor_version();
+    if (!trigger_read_sensor_version()) {
+        s_drop_cnt++;
+    }
 
     uint32_t t_req     = modbus_millis();
     uint32_t t_report  = t_req;
@@ -272,10 +304,15 @@ int mote_main(void)
         }
 
         // ---- 4. 发起下一次请求：总线空闲且距上次请求已够久 ----
+        // ⚠ 返回值必须看：false = 请求根本没发出去（总线忙或参数非法）。
+        //   以前这里忽略返回值，丢掉的请求在日志里完全不留痕迹。
         if (g_bus_state == MODBUS_STATE_IDLE &&
             (uint32_t)(modbus_millis() - t_req) >= MODBUS_POLL_PERIOD_MS) {
-            t_req = modbus_millis();
-            trigger_read_wind_field_data();
+            if (trigger_read_wind_field_data()) {
+                t_req = modbus_millis();
+            } else {
+                s_drop_cnt++;
+            }
         }
     }
     return 0;

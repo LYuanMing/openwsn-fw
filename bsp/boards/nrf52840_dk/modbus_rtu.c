@@ -28,6 +28,16 @@ static uint16_t g_frame_maxgap   = 0;   // 本帧内最大字节间隔(ms)
 static volatile uint16_t g_max_gap_all = 0; // 开机以来所有帧中的最大字节间隔(ms)
 static volatile bool g_tx_complete_flag = false;
 
+/* ---- 失败诊断与自动恢复所需的附加状态 ------------------------------------ */
+static volatile uint32_t g_count_tx_timeout = 0;  // ENDTX 丢失，TX 态被强制复位
+static volatile uint32_t g_count_retry      = 0;  // 坏帧/超时后自动补发同一请求
+static volatile uint32_t g_count_overflow   = 0;  // RX 缓冲溢出被丢弃的字节数
+static volatile uint32_t g_count_reject     = 0;  // 参数非法被拒的请求数
+static volatile uint8_t  g_last_exception   = 0;  // 最后一个 0x83 异常应答的异常码
+static uint32_t g_tx_start_ts = 0;         // 进入 TX 态的时刻（发送兜底超时基准）
+static uint8_t  g_retry_used  = 0;         // 本次事务已经自动重发过几次
+static uint8_t  g_tx_frame[8];             // 当前事务的请求帧（重发时原样复用）
+
 /* ⚡ 极其重要：驻留在 SRAM 中的单字节缓冲区，专供 EasyDMA 硬件每次挪移 1 字节使用 */
 static uint8_t g_dma_rx_byte; 
 
@@ -141,6 +151,10 @@ void UARTE1_IRQHandler(void) {
         if (g_bus_state == MODBUS_STATE_RX_WAIT) {
             if (g_rx_cnt < MODBUS_RX_BUF_SIZE) {
                 g_rx_buffer[g_rx_cnt++] = g_dma_rx_byte;
+            } else {
+                // 缓冲写满后继续来字节：静默丢弃会让 CRC 报错，但必须留下痕迹，
+                // 否则事后无法区分"传感器少发了"和"我们缓冲不够"。
+                g_count_overflow++;
             }
             // ⚡【断帧核心】：只要总线蹦出一个新字节，就疯狂刷新最近接收时间戳
             uint32_t now_ms = get_system_time_ms();
@@ -187,40 +201,71 @@ static void nrf52840_uart_dma_tx(const uint8_t *buf, uint16_t len) {
     NRF_UARTE1->TASKS_STARTTX = 1;
 }
 
+/**
+ * @brief Start one transmission: clear the previous transaction, arm the TX
+ *        watchdog baseline, hand the frame to EasyDMA.
+ * @note  First send and automatic retry both go through here, so both paths
+ *        behave identically. The request frame lives in g_tx_frame, which is
+ *        what makes an immediate re-send possible at all.
+ */
+static void modbus_start_tx(void) {
+    g_rx_cnt           = 0;
+    g_frame_maxgap     = 0;
+    g_tx_complete_flag = false;
+    g_tx_start_ts      = get_system_time_ms();
+    g_bus_state        = MODBUS_STATE_TX;
+    nrf52840_uart_dma_tx(g_tx_frame, 8);
+}
+
+/**
+ * @brief Transaction failed: re-send once if the budget allows, else release.
+ * @note  The sensor aborts ~3-5% of its own replies mid-frame (measured), so a
+ *        bad frame costs a whole polling period if the only way back is the
+ *        application loop. One immediate retry turns that into ~0.2% loss.
+ */
+static void modbus_finish_or_retry(void) {
+    if (g_retry_used < MODBUS_MAX_RETRY) {
+        g_retry_used++;
+        g_count_retry++;
+        g_bus_state = MODBUS_STATE_RETRY_WAIT;   // modbus_poll re-sends after the 3.5T guard
+    } else {
+        g_current_parser = NULL;
+        g_bus_state = MODBUS_STATE_IDLE;
+    }
+}
+
 /* ------------------------------------------------------------------------ */
 /* 7. 通用非阻塞读指令投放                           */
 /* ------------------------------------------------------------------------ */
 bool modbus_read_registers(uint8_t dev_addr, uint16_t start_reg, uint16_t reg_cnt, modbus_parser_t parse_callback) {
     if (g_bus_state != MODBUS_STATE_IDLE) {
-        return false; // 总线正忙（或正在发、或正在等收），拒绝本次叠加请求
+        return false;   // bus busy: still sending, or still waiting for a reply
     }
-    
-    // 核心动作：动态挂载针对本次读取的专用回调解析器
-    g_current_parser = parse_callback; 
-    
-    // 必须是 static 或者是全局空间，确保变量生命周期跨越整个后台 EasyDMA 发送期
-    static uint8_t tx_frame[8]; 
-    
-    tx_frame[0] = dev_addr;
-    tx_frame[1] = 0x03; // 功能码：读保持寄存器
-    tx_frame[2] = (uint8_t)(start_reg >> 8);
-    tx_frame[3] = (uint8_t)(start_reg & 0xFF);
-    tx_frame[4] = (uint8_t)(reg_cnt >> 8);
-    tx_frame[5] = (uint8_t)(reg_cnt & 0xFF);
-    
-    uint16_t crc = modbus_crc16(tx_frame, 6);
-    tx_frame[6] = crc & 0xFF; // Modbus 标准：低字节在前
-    tx_frame[7] = crc >> 8;
-    
-    g_rx_cnt = 0;
-    g_tx_complete_flag = false;
-    
-    // 切换状态机进入发送状态
-    g_bus_state = MODBUS_STATE_TX;
-    
-    // 投递给硬件底层发送
-    nrf52840_uart_dma_tx(tx_frame, 8); 
-    
+    // Parameter guards: an out-of-range reg_cnt can never fit in MODBUS_RX_BUF_SIZE,
+    // and a NULL parser would silently discard the reply. Count both as rejects so
+    // the application can tell "bus busy" from "caller bug".
+    if (parse_callback == NULL || reg_cnt == 0 || reg_cnt > MODBUS_MAX_REG_CNT) {
+        g_count_reject++;
+        return false;
+    }
+
+    g_current_parser = parse_callback;   // mount the parser for this transaction
+
+    g_tx_frame[0] = dev_addr;
+    g_tx_frame[1] = 0x03;                // function code: read holding registers
+    g_tx_frame[2] = (uint8_t)(start_reg >> 8);
+    g_tx_frame[3] = (uint8_t)(start_reg & 0xFF);
+    g_tx_frame[4] = (uint8_t)(reg_cnt >> 8);
+    g_tx_frame[5] = (uint8_t)(reg_cnt & 0xFF);
+
+    uint16_t crc = modbus_crc16(g_tx_frame, 6);
+    g_tx_frame[6] = crc & 0xFF;          // Modbus standard: low byte first
+    g_tx_frame[7] = crc >> 8;
+
+    g_retry_used = 0;
+
+    modbus_start_tx();
+
     return true;
 }
 
@@ -229,64 +274,89 @@ bool modbus_read_registers(uint8_t dev_addr, uint16_t start_reg, uint16_t reg_cn
 /* ------------------------------------------------------------------------ */
 void modbus_poll(void) {
     uint32_t now = get_system_time_ms();
-    
+
     switch (g_bus_state) {
         case MODBUS_STATE_IDLE:
             break;
-            
+
         case MODBUS_STATE_TX:
-            // 等待来自 UARTE1 中断服务程序刷出的发送完毕信号
             if (g_tx_complete_flag) {
-                g_last_rx_timestamp = now; // 重置断帧基准时间，开始进入漫长等待
+                g_last_rx_timestamp = now;   // start the reply timer here
                 g_bus_state = MODBUS_STATE_RX_WAIT;
+            } else if ((uint32_t)(now - g_tx_start_ts) >= MODBUS_TX_TIMEOUT_MS) {
+                // ENDTX lost (reset glitch, or the IRQ was masked for a long
+                // time). Without this watchdog the state machine parks in TX
+                // forever: no data, no timeout counter, nothing to notice.
+                g_count_tx_timeout++;
+                modbus_finish_or_retry();
             }
             break;
-            
+
+        case MODBUS_STATE_RETRY_WAIT:
+            // Modbus requires 3.5T of silence before the next request; never
+            // go back-to-back on the wire.
+            if ((uint32_t)(now - g_last_rx_timestamp) >= MODBUS_INTER_FRAME_GUARD_MS) {
+                modbus_start_tx();
+            }
+            break;
+
         case MODBUS_STATE_RX_WAIT:
-            // 【整帧收齐判定】
-            // ★ 首选判据：MODBUS 应答自带"有效字节数"(buf[2])，收满 5+buf[2] 字节即整帧。
-            //   实测本传感器会在帧中间停顿 >10ms（内部测量周期打断 UART 发送），
-            //   只靠静默断帧会把它切成"正确前缀"的坏帧（实测约 5%）。
-            if (g_rx_cnt >= 5 && g_rx_cnt >= (uint16_t)(5 + g_rx_buffer[2])) {
+            // Primary rule: the reply carries its own byte count (buf[2]), so a
+            // complete frame is 5 + buf[2] bytes. The sensor really does pause
+            // ~175-210ms mid-frame, which would otherwise cut a valid reply
+            // into a bad "correct prefix".
+            if (g_rx_cnt >= 3) {
+                // 0x83 exception replies carry no data block, they are 5 bytes.
+                uint16_t expect = (g_rx_buffer[1] & 0x80)
+                                 ? (uint16_t)5
+                                 : (uint16_t)(5 + g_rx_buffer[2]);
+                // A byte count we could never buffer means the header is garbage
+                // (or the slave wants more than our buffer): fail fast instead of
+                // stalling 400ms on the silence fallback.
+                if (expect > MODBUS_RX_BUF_SIZE || g_rx_cnt >= expect) {
+                    g_bus_state = MODBUS_STATE_PARSE;
+                }
+            }
+            // Fallback: truncated frame, close it on bus silence
+            else if (g_rx_cnt > 0 && (uint32_t)(now - g_last_rx_timestamp) >= MODBUS_FRAME_GAP_MS) {
                 g_bus_state = MODBUS_STATE_PARSE;
             }
-            // 兜底：收不齐才退回静默断帧（异常帧 / 真丢字节）
-            else if (g_rx_cnt > 0 && (now - g_last_rx_timestamp >= MODBUS_FRAME_GAP_MS)) {
-                g_bus_state = MODBUS_STATE_PARSE;
-            }
-            // ⏳【总线超时异常保护】
-            // 指令丢出去 200ms 了，传感器连一个字节的回话都没有（可能线断了或没上电）
-            else if (g_rx_cnt == 0 && (now - g_last_rx_timestamp >= MODBUS_RX_TIMEOUT_MS)) {
+            // Nothing at all came back within the timeout
+            else if (g_rx_cnt == 0 && (uint32_t)(now - g_last_rx_timestamp) >= MODBUS_RX_TIMEOUT_MS) {
                 g_count_timeout++;
-                g_current_parser = NULL; 
-                g_bus_state = MODBUS_STATE_IDLE; // 复位总线
+                modbus_finish_or_retry();
             }
             break;
-            
+
         case MODBUS_STATE_PARSE:
         {
             bool frame_ok = false;
-            // 基础合法性过滤：长度至少包含（地址+功能码+字节数+2字节CRC） = 5
             if (g_rx_cnt >= 5) {
                 uint16_t calc_crc = modbus_crc16(g_rx_buffer, g_rx_cnt - 2);
                 uint16_t recv_crc = g_rx_buffer[g_rx_cnt - 2] | (g_rx_buffer[g_rx_cnt - 1] << 8);
 
-                // 校验完全通关，证明这包数据完美且无损
-                if (calc_crc == recv_crc && g_rx_buffer[1] == 0x03) {
-                    frame_ok = true;
+                if (calc_crc == recv_crc) {
+                    if (g_rx_buffer[1] == 0x03) {
+                        frame_ok = true;
+                        g_last_exception = 0;      // good frame clears a stale code
+                    } else if (g_rx_buffer[1] & 0x80) {
+                        // 0x83 + exception code: keep it structured (e.g. 0x02
+                        // illegal data address tells the caller to split the read)
+                        g_last_exception = g_rx_buffer[2];
+                    }
                 }
             }
 
             if (frame_ok) {
                 g_count_frame++;
                 if (g_frame_maxgap > g_max_gap_all) g_max_gap_all = g_frame_maxgap;
-                // 直接把大缓冲区交给当前挂载的业务解析器，底层不关心具体数据含义
                 if (g_current_parser != NULL) {
                     g_current_parser(g_rx_buffer, g_rx_cnt);
                 }
+                g_current_parser = NULL;
+                g_bus_state = MODBUS_STATE_IDLE;      // good frame: never retry
             } else {
-                // 坏帧：留一份现场，上层可以打出来看传感器到底回了什么
-                //（例如 0x83 就是 Modbus 异常码：非法数据地址）
+                // Bad frame: keep the scene for the application to dump
                 g_count_error++;
                 uint16_t n = (g_rx_cnt < MODBUS_RX_BUF_SIZE) ? (uint16_t)g_rx_cnt : (uint16_t)MODBUS_RX_BUF_SIZE;
                 for (uint16_t k = 0; k < n; k++) {
@@ -294,11 +364,8 @@ void modbus_poll(void) {
                 }
                 g_last_error_len = n;
                 if (g_frame_maxgap > g_max_gap_all) g_max_gap_all = g_frame_maxgap;
+                modbus_finish_or_retry();
             }
-
-            // 清空本次传输事务，释放总线控制权，迎接下一次应用层触发
-            g_current_parser = NULL;
-            g_bus_state = MODBUS_STATE_IDLE;
             break;
         }
     }
@@ -331,6 +398,35 @@ uint32_t modbus_get_error_count(void) {
 /** @brief 累计 UARTE 硬件错误次数（帧错误/溢出） */
 uint32_t modbus_get_uart_error_count(void) {
     return g_count_uarterr;
+}
+
+/** @brief Cumulative send-timeouts (ENDTX lost, TX state force-reset) */
+uint32_t modbus_get_tx_timeout_count(void) {
+    return g_count_tx_timeout;
+}
+
+/** @brief Cumulative automatic re-sends after a bad frame / timeout */
+uint32_t modbus_get_retry_count(void) {
+    return g_count_retry;
+}
+
+/** @brief Cumulative RX bytes dropped because the buffer was full */
+uint32_t modbus_get_overflow_count(void) {
+    return g_count_overflow;
+}
+
+/** @brief Cumulative requests rejected for illegal parameters */
+uint32_t modbus_get_reject_count(void) {
+    return g_count_reject;
+}
+
+/**
+ * @brief Last Modbus exception code seen (0 = none)
+ * @note  Sticky: cleared only when a good frame arrives, so the application can
+ *        poll it after the fact. Exception reply looks like: 0x83 code CRC.
+ */
+uint8_t modbus_get_last_exception(void) {
+    return g_last_exception;
 }
 
 /**

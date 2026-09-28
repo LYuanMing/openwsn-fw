@@ -11,24 +11,24 @@ void parse_wind_field_data_callback(const uint8_t* buf, uint16_t len);
 void parse_sensor_version_callback(const uint8_t* buf, uint16_t len);
 
 
-void trigger_read_calibration_params(void)
+bool trigger_read_calibration_params(void)
 {
-    modbus_read_registers(WIND_FIELD_MODBUS_ADDR, CALIBRATION_PARAMS_ADDR, CALIBRATION_PARAMS_RANGE, parse_calibration_param_callback);
+    return modbus_read_registers(WIND_FIELD_MODBUS_ADDR, CALIBRATION_PARAMS_ADDR, CALIBRATION_PARAMS_RANGE, parse_calibration_param_callback);
 }
 
-void trigger_read_communication_params(void)
+bool trigger_read_communication_params(void)
 {
-    modbus_read_registers(WIND_FIELD_MODBUS_ADDR, COMMUNICATION_PARAMS_ADDR, COMMUNICATION_PARAMS_RANGE, parse_communication_param_callback);
+    return modbus_read_registers(WIND_FIELD_MODBUS_ADDR, COMMUNICATION_PARAMS_ADDR, COMMUNICATION_PARAMS_RANGE, parse_communication_param_callback);
 }
 
-void trigger_read_wind_field_data(void)
+bool trigger_read_wind_field_data(void)
 {
-    modbus_read_registers(WIND_FIELD_MODBUS_ADDR, WIND_FIELD_DATA_ADDR, WIND_FIELD_DATA_RANGE, parse_wind_field_data_callback);
+    return modbus_read_registers(WIND_FIELD_MODBUS_ADDR, WIND_FIELD_DATA_ADDR, WIND_FIELD_DATA_RANGE, parse_wind_field_data_callback);
 }
 
-void trigger_read_sensor_version(void)
+bool trigger_read_sensor_version(void)
 {
-    modbus_read_registers(WIND_FIELD_MODBUS_ADDR, SENSOR_VERSION_ADDR, SENSOR_VERSION_RANGE, parse_sensor_version_callback);
+    return modbus_read_registers(WIND_FIELD_MODBUS_ADDR, SENSOR_VERSION_ADDR, SENSOR_VERSION_RANGE, parse_sensor_version_callback);
 }
 
 static float uint8_to_float_abcd(const uint8_t *p) {
@@ -45,7 +45,8 @@ static float uint8_to_float_abcd(const uint8_t *p) {
 void parse_calibration_param_callback(const uint8_t* buf, uint16_t len)
 {
     uint8_t byte_cnt = buf[2]; // Modbus 帧第3字节为数据长度
-    if (byte_cnt == 10) {
+    // 长度先行保护：byte_cnt 是帧里的声明值，不保证真的收到了那么多字节
+    if (byte_cnt == 10 && len >= (uint16_t)(3 + byte_cnt + 2)) {
         // 1. 提取 0x0050 滤波长度 (INT16U)
         calibration_params.filter_length = (buf[3] << 8) | buf[4];
         
@@ -64,7 +65,7 @@ void parse_calibration_param_callback(const uint8_t* buf, uint16_t len)
 void parse_communication_param_callback(const uint8_t* buf, uint16_t len)
 {
     uint8_t byte_cnt = buf[2];
-    if (byte_cnt == 4) {
+    if (byte_cnt == 4 && len >= (uint16_t)(3 + byte_cnt + 2)) {
         // 1. 提取 0x07D0 Modbus 地址 (INT8U 存储在 16 位寄存器的低字节)
         communication_params.modbus_addr = buf[4]; 
         
@@ -90,8 +91,9 @@ void parse_communication_param_callback(const uint8_t* buf, uint16_t len)
 void parse_wind_field_data_callback(const uint8_t* buf, uint16_t len)
 {
     uint8_t byte_cnt = buf[2]; // 获取回传的数据字节数
+    // 长度先行保护：下面最多读到 buf[34]，必须先确认帧真的有这么长
     
-    if (byte_cnt == 32) { // 严格核验是否收齐 32 字节数据
+    if (byte_cnt == 32 && len >= (uint16_t)(3 + byte_cnt + 2)) { // 严格核验是否收齐 32 字节数据
 
         // 0. 留一份原始字节，方便上板核对标度/字节序
         memcpy(wind_field_data.raw, &buf[3], WIND_FIELD_RAW_LEN);
@@ -132,6 +134,10 @@ void parse_wind_field_data_callback(const uint8_t* buf, uint16_t len)
         wind_field_data.y_axis_wind_speed = (float)raw_y_speed / 100.0f;
         wind_field_data.z_axis_wind_speed = (float)raw_z_speed / 100.0f;
 
+        // 打上帧身份：序号 + 本地时间戳。上层靠它们才能区分"刚到的数"和"卡住的旧数"
+        wind_field_data.t_ms = modbus_millis();
+        wind_field_data.seq++;
+
         // 释放接力棒，通知网络层或主循环消费数据
         wind_field_data.is_ready = true;
     }
@@ -141,8 +147,7 @@ void parse_wind_field_data_callback(const uint8_t* buf, uint16_t len)
 void parse_sensor_version_callback(const uint8_t* buf, uint16_t len)
 {
     uint8_t byte_cnt = buf[2]; // 获取回传的数据字节数
-    
-    if (byte_cnt == 4) { 
+    if (byte_cnt == 4 && len >= (uint16_t)(3 + byte_cnt + 2)) { 
         // 补全逻辑：高位左移 8 位拼接低位
         sensor_version.software_version = (buf[3] << 8) | buf[4];
         sensor_version.hardware_version = (buf[5] << 8) | buf[6];
@@ -150,4 +155,16 @@ void parse_sensor_version_callback(const uint8_t* buf, uint16_t len)
         // 拉高就绪旗帜
         sensor_version.is_ready = true;
     }
+}
+
+
+uint32_t wind_field_data_age_ms(void) {
+    if (wind_field_data.seq == 0) {
+        return 0xFFFFFFFFu;      // never received a frame: treat as infinitely old
+    }
+    return (uint32_t)(modbus_millis() - wind_field_data.t_ms);
+}
+
+bool wind_field_data_is_fresh(uint32_t max_age_ms) {
+    return (wind_field_data.seq != 0) && (wind_field_data_age_ms() <= max_age_ms);
 }
