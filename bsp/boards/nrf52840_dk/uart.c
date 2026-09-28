@@ -94,7 +94,9 @@ void uart_init(void) {
 void uart_setCallbacks(uart_tx_cbt txCb, uart_rx_cbt rxCb) {
     uart_vars.txCb = txCb;
     uart_vars.rxCb = rxCb;
+#if PERF_BRINGUP
     uart_bootProbe(txCb ? "cb|" : "cb0|");   // DEBUG
+#endif
 }
 
 void    uart_enableInterrupts(void) {
@@ -187,6 +189,7 @@ kick_scheduler_t uart_rx_isr(void) {
 
     return DO_NOT_KICK_SCHEDULER;
 }
+#if PERF_BRINGUP
 //=========================== debug probe =====================================
 // Blocking, polled TX: writes each byte and waits for EVENTS_TXDRDY.
 // Bypasses openserial entirely, separating "can the UART transmit at all"
@@ -211,3 +214,5 @@ void uart_bootProbe(const char *tag) {
 uint8_t uart_hasCallbacks(void) {
     return (uart_vars.txCb != 0) ? 1 : 0;
 }
+#endif /* PERF_BRINGUP */
+

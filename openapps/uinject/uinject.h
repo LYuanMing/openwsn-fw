@@ -14,7 +14,11 @@
 
 //=========================== define ==========================================
 
+// Packet period. Overridable at build time for the Run-L lambda ladder:
+//   scons ... apps=uinject uinject_period_ms=500
+#ifndef UINJECT_PERIOD_MS
 #define UINJECT_PERIOD_MS 2000
+#endif
 
 //=========================== typedef =========================================
 

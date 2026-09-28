@@ -40,8 +40,10 @@ typedef uint8_t (*uart_rx_cbt)(void);
 //=========================== prototypes ======================================
 
 void    uart_init(void);
+#if PERF_BRINGUP
 void    uart_bootProbe(const char *tag);   // DEBUG: blocking polled TX probe
-uint8_t uart_hasCallbacks(void);          // DEBUG: 1 if txCb/rxCb registered
+uint8_t uart_hasCallbacks(void);           // DEBUG: 1 if txCb/rxCb registered
+#endif
 void    uart_setCallbacks(uart_tx_cbt txCb, uart_rx_cbt rxCb);
 void    uart_enableInterrupts(void);
 void    uart_disableInterrupts(void);

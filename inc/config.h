@@ -297,6 +297,11 @@
  */
 #ifndef OPENWSN_FORCETOPOLOGY_C
 #define OPENWSN_FORCETOPOLOGY_C (1)
+
+// perf-test bring-up instrumentation. 0 = clean build for measurement runs.
+// Set to 1 (or -DPERF_BRINGUP=1) to re-enable the boot-time UART probes and the
+// D-frame path printfs that were used to bring the serial link up (docs/06..09).
+#define PERF_BRINGUP (0)
 #endif
 
 
@@ -390,7 +395,7 @@
  *
  */
 #ifndef DAGROOT
-#define DAGROOT (1)
+#define DAGROOT (0)
 #endif
 
 /**

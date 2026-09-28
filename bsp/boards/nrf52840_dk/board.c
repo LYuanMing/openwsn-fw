@@ -43,7 +43,9 @@ void board_init(void) {
     // (PSEL=0xFFFFFFFF, ENABLE=0) so openserial emits nothing at all.
     // Keep SUPER_LOW_POWER=1 for the radio/HFCLK paths: only the UART moves.
     uart_init();
+#if PERF_BRINGUP
     uart_bootProbe("A|");
+#endif
     sctimer_init();
     radio_init();
 

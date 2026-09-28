@@ -17,17 +17,11 @@ int mote_main(void) {
    
    // initialize
    board_init();
-   uart_bootProbe("P|");
    scheduler_init();
-   uart_bootProbe("S|");
    openstack_init();
-   uart_bootProbe("B|");
-   uart_bootProbe(uart_hasCallbacks() ? "T|" : "t|");
    energyMeasurementInit();
-   uart_bootProbe("C|");
    // start
    scheduler_start();
-   uart_bootProbe("!!scheduler_start returned");
 
    return 0; // this line should never be reached
 }

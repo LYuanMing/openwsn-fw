@@ -451,9 +451,6 @@ void ieee802154_retrieveHeader(OpenQueueEntry_t *msg,
 
     // apply topology filter
     if (topology_isAcceptablePacket(ieee802514_header) == FALSE) {
-        // DEBUG (perf bring-up): make the silent topology drop visible.
-        openserial_printf("TOPO reject src=%d",
-                          (int)ieee802514_header->src.addr_64b[7]);
         // the topology filter does accept this packet, return
         return;
     }
