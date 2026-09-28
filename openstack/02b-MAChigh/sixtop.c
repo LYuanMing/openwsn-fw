@@ -508,6 +508,7 @@ void task_sixtopNotifReceive(void) {
         case IEEE154_TYPE_BEACON:
         case IEEE154_TYPE_DATA:
         case IEEE154_TYPE_CMD:
+            openserial_printf("SIXTOP rx DATA len=%d ft=%d", (int)msg->length, (int)msg->l2_frameType);
             if (msg->length > 0) {
                 if (msg->l2_frameType == IEEE154_TYPE_BEACON) {
                     // I have one byte frequence field, no useful for upper layer

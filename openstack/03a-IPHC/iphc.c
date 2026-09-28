@@ -277,6 +277,13 @@ void iphc_receive(OpenQueueEntry_t *msg) {
         return;
     }
 
+    // DEBUG (perf bring-up): which branch does each received packet take?
+    openserial_printf("IPHC rx d0=%d d14=%d d15=%d bc=%d root=%d",
+                      (int)ipv6_inner_header.dest.addr_128b[0],
+                      (int)ipv6_inner_header.dest.addr_128b[14],
+                      (int)ipv6_inner_header.dest.addr_128b[15],
+                      (int)packetfunctions_isBroadcastMulticast(&(ipv6_inner_header.dest)),
+                      (int)idmanager_getIsDAGroot());
     // if the address is broadcast address, the ipv6 header is the inner header
     if (idmanager_getIsDAGroot() == FALSE || packetfunctions_isBroadcastMulticast(&(ipv6_inner_header.dest))) {
         packetfunctions_tossHeader(&msg, page_length);
