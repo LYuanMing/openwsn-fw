@@ -1021,7 +1021,7 @@ port_INLINE void activity_ti1ORri1(void) {
       if (energy_vars.throttle_factor > 0) {
           throttol_mask = (1 << energy_vars.throttle_factor) - 1;
           if ((current_sf & throttol_mask) != 0) {
-              openserial_printf("SF %d I skip slot\r\n", current_sf);
+              ieee154e_stats.numSkipOwn++;   /* was: openserial_printf (starved STATUS frames) */
               endSlot();
               return;
           }
@@ -1051,7 +1051,7 @@ port_INLINE void activity_ti1ORri1(void) {
       if (neighbor_throttle_factor > 0) {
           throttol_mask = (1 << neighbor_throttle_factor) - 1;
           if ((current_sf & throttol_mask) != 0) {
-              openserial_printf("SF %d neighbor skip slot\r\n", current_sf);
+              ieee154e_stats.numSkipNeighbor++;   /* was: openserial_printf */
               endSlot();
               return;
           }

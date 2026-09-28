@@ -334,6 +334,12 @@ typedef struct {
     uint8_t numDeSync;               // number of times a desync happened
     uint32_t numTicsOn;              // mac dutyCycle
     uint32_t numTicsTotal;           // total tics for which the dutycycle is computed
+    // perf-test instrumentation: energy-throttle skip counters.
+    // These replace the openserial_printf() calls that used to fire on EVERY
+    // skipped slot (~87/slotframe at SF101+factor3 = ~2.2 kB/s), which starved
+    // the periodic STATUS frames and inflated the measured current.
+    uint32_t numSkipOwn;             // slots I skipped because of my own throttle_factor
+    uint32_t numSkipNeighbor;        // slots I skipped because a neighbour throttles
 } ieee154e_stats_t;
 END_PACK
 

@@ -63,75 +63,36 @@ bool topology_isAcceptablePacket(ieee802154_header_iht* ieee802514_header) {
 
    returnVal = FALSE;
 
-   // Per-board role table (EUI64 last byte -> behaviour).
-   // Measured 2026-09-11 with tools/node_id.sh. Original nrf52840DK root
-   // probe is sn 1050208732 (DK on-board nrf52840 is **powered off** — root
-   // is an external nrf52840 attached to the DK's SWD pins and powered
-   // separately at 3.3V). Bare nRF52840 DUT board reads via J-Link V9.8 PLUS
-   // sn 602719539.
-   //
-   // Leaf board set evolved during the day as boards failed/replaced:
-   //   sn 1050227853  EUI64[7]=0xE4   (always on, OK)
-   //   sn 1050271158  EUI64[7]=0xCA   (replaced: died mid-day, marked inactive)
-   //   sn 1050255521  EUI64[7]=0xCD   (replacement for sn 1050271158)
-   //   sn 1050275279  EUI64[7]=0x18   (OK)
-   //   sn 1050284179  EUI64[7]=0xBA   (OK)
-   //   sn 1050292671  EUI64[7]=0x38   (OK)
-   //
-   // Round 1 (2026-09-11 16:09): only 0xe4 = leaf_on, others = leaf_off
-   //   self 0x32  = root (external, flashed via DK sn 1050208732 OB)
-   //   self 0x8c  = DUT  (bare nRF52840, VDD <- PPK2)
-   //   self 0xe4  = leaf_on  (DK sn 1050227853) - accepts ONLY DUT
-   //   self 0xcd  = leaf_off (DK sn 1050255521) - reject all
-   //   self 0x18  = leaf_off (DK sn 1050275279) - reject all
-   //   self 0xba  = leaf_off (DK sn 1050284179) - reject all
-   //   self 0x38  = leaf_off (DK sn 1050292671) - reject all
-   //
-   // Round 2 (2026-09-11 17:00): all 5 leaves accept DUT, verify each connects
-   //   self 0xe4 / 0xcd / 0x18 / 0xba / 0x38  = all 5 leaves accept ONLY DUT
-   //
-   // Round 7 (2026-09-11 20:20): per-build configurable leaf-on set, edited
-   //   directly in this file by tools/apply_config.py --leaf-on N (N=2..5).
-   //   For i <= N: case 0x<leaf-bytes[i]> branches accept DUT.
-   //   For i >  N: case 0x<leaf-bytes[i]> branches fall through to returnVal=FALSE
-   //   (reject all). Currently active leaf set (in apply_config order):
-   //   self 0xe4  = leaf 1 (DK sn 1050227853)
-   //   self 0xcd  = leaf 2 (DK sn 1050255521)
-   //   self 0x18  = leaf 3 (DK sn 1050275279)
-   //   self 0xba  = leaf 4 (DK sn 1050284179)
-   //   self 0xd9  = leaf 5 (DK sn 683260444; replaced 0x38/1050292671 2026-09-14)
+   // Per-board role table for the perf-test bench (EUI64 last byte -> behaviour).
+   // Bench = 5 x nRF52840 DK, all flashed from this same tree.
+   //   0xe4  root   DK sn 1050227853   vcom0 COM30
+   //   0xcd  DUT    DK sn 1050255521   vcom0 COM41
+   //   0x18  child1 DK sn 1050275279   vcom0 COM34
+   //   0xba  child2 DK sn 1050284179   vcom0 COM36
+   //   0xd9  child3 DK sn 683260444    vcom0 COM42
+   // root/DUT accept everything; each child accepts ONLY the DUT, which forces
+   // the DUT to be the only parent (N is a deterministic set, not a random one).
+   // CHILD1_ON..CHILD3_ON are rewritten in place by tools/apply_config_perf.py.
    switch (idmanager_getMyID(ADDR_64B)->addr_64b[7]) {
-      // root and DUT must stay reachable: accept everything
-      case 0x32:
-      case 0x8c:
+      // root (0xe4) and DUT (0xcd) accept everything
+      case 0xe4:
+      case 0xcd:
          returnVal = TRUE;
          break;
-      // leaf 1 (LEAF1_ON)
-      case 0xe4:
-         if (ieee802514_header->src.addr_64b[7] == 0x8c) { returnVal = TRUE; }
-         break;
-      // leaf 2 (LEAF2_ON)
-      case 0xcd:
-         if (ieee802514_header->src.addr_64b[7] == 0x8c) { returnVal = TRUE; }
-         break;
-      // leaf 3 (LEAF3_ON)
+      // child 1 (CHILD1_OFF) -- accepts ONLY the DUT
       case 0x18:
-         if (ieee802514_header->src.addr_64b[7] == 0x8c) { returnVal = TRUE; }
-         break;
-      // leaf 4 (LEAF4_ON)
-      case 0xba:
-         if (ieee802514_header->src.addr_64b[7] == 0x8c) { returnVal = TRUE; }
-         break;
-      // leaf 5 (LEAF5_ON)
-      case 0x38:
          returnVal = FALSE;
          break;
-      // leaf 5 replacement (LEAF5_ON; replaced 0x38/1050292671 2026-09-14)
+      // child 2 (CHILD2_OFF) -- accepts ONLY the DUT
+      case 0xba:
+         returnVal = FALSE;
+         break;
+      // child 3 (CHILD3_OFF) -- accepts ONLY the DUT
       case 0xd9:
-         if (ieee802514_header->src.addr_64b[7] == 0x8c) { returnVal = TRUE; }
+         returnVal = FALSE;
          break;
       default:
-         // any future / unknown board: behave like root/DUT (don't break the network)
+         // unknown board: behave like root/DUT so the network is not broken
          returnVal = TRUE;
          break;
    }
