@@ -474,6 +474,12 @@ owerror_t forwarding_send_internal_RoutingTable(
     }
 
     if (msg->l2_nextORpreviousHop.type == ADDR_NONE) {
+        // DEBUG (perf bring-up): this is the silent drop point for the uinject
+        // packets ("no route -> no next hop").  %u is NOT supported by this
+        // fork's openserial_printf, use %d.
+        openserial_printf("FWD no-nexthop dst=%d%d",
+                          (int)msg->l3_destinationAdd.addr_128b[14],
+                          (int)msg->l3_destinationAdd.addr_128b[15]);
         LOG_ERROR(COMPONENT_FORWARDING, ERR_NO_NEXTHOP,
                   (errorparameter_t) msg->l3_destinationAdd.addr_128b[14],
                   (errorparameter_t) msg->l3_destinationAdd.addr_128b[15]

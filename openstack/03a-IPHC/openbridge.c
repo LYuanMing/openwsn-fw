@@ -70,10 +70,6 @@ void openbridge_sendDone(OpenQueueEntry_t *msg, owerror_t error) {
 \brief Receive a frame at the openbridge, which sends it out over serial.
 */
 void openbridge_receive(OpenQueueEntry_t *msg) {
-    // DEBUG (perf bring-up): log every packet handed to the bridge so we can tell
-    // "packets never arrive at the root" apart from "serial path drops them".
-    openserial_printf("BRIDGE rx len=%u\r\n", (uint16_t)msg->length);
-
     // prepend previous hop
     packetfunctions_reserveHeader(&msg, LENGTH_ADDR64b);
     memcpy(msg->payload, msg->l2_nextORpreviousHop.addr_64b, LENGTH_ADDR64b);
@@ -82,7 +78,6 @@ void openbridge_receive(OpenQueueEntry_t *msg) {
     packetfunctions_reserveHeader(&msg, LENGTH_ADDR64b);
     memcpy(msg->payload, idmanager_getMyID(ADDR_64B)->addr_64b, LENGTH_ADDR64b);
 
-    // send packet over serial (will be memcopied into serial buffer)
     openserial_printData((uint8_t * )(msg->payload), msg->length);
 
     // free packet

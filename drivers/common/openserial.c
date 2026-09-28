@@ -200,16 +200,22 @@ owerror_t openserial_printData(uint8_t *buffer, uint8_t length) {
     outputHdlcWrite(asn[2]);
     outputHdlcWrite(asn[3]);
     outputHdlcWrite(asn[4]);
+    // FIX (battery-free perf build): the body-writing loop used to live INSIDE
+    // '#if OPENWSN_UTEMPERATURE_C'. With apps=uinject the macro is 0, so NO body
+    // byte was ever written and every DATA frame came out as 8 bytes
+    // ([type][addr16][asn x5]) with the payload silently dropped.
+    // Only the utemperature-specific scan is conditional now; the copy always runs.
+    i = 0;
     #if OPENWSN_UTEMPERATURE_C
     for (i = 0; i < length; i++) {
         if (buffer[i] == 'u' && buffer[i+1] == 't') {
             break;
         }
     }
-    for (;i < length; i++) {
+    #endif
+    for (; i < length; i++) {
         outputHdlcWrite(buffer[i]);
     }
-    #endif
     outputHdlcClose();
 
     // start TX'ing
