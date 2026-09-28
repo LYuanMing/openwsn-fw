@@ -44,7 +44,7 @@ static const uint8_t ebIEsBytestream[] = {
 #define TX_POWER                    31  // 1=-25dBm, 31=0dBm (max value)
 #define RESYNCHRONIZATIONGUARD       5  // in 32kHz ticks. min distance to the end of the slot to successfully synchronize
 #ifndef EB_PORTION
-#define EB_PORTION                  3 // set EB on minimal cell for 1/EB_PORTION portion
+#define EB_PORTION                  30 // set EB on minimal cell for 1/EB_PORTION portion
 #endif
 // Per-build crystal-drift compensation. The DK board's 32.768 kHz sleep
 // crystal differs from the bare nrf52840 module crystal used by the relay/

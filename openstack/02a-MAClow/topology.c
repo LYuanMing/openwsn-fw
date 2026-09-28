@@ -79,17 +79,17 @@ bool topology_isAcceptablePacket(ieee802154_header_iht* ieee802514_header) {
       case 0xcd:
          returnVal = TRUE;
          break;
-      // child 1 (CHILD1_OFF) -- accepts ONLY the DUT
+      // child 1 (CHILD1_ON) -- accepts ONLY the DUT
       case 0x18:
-         returnVal = FALSE;
+         if (ieee802514_header->src.addr_64b[7] == 0xcd) { returnVal = TRUE; }
          break;
-      // child 2 (CHILD2_OFF) -- accepts ONLY the DUT
+      // child 2 (CHILD2_ON) -- accepts ONLY the DUT
       case 0xba:
-         returnVal = FALSE;
+         if (ieee802514_header->src.addr_64b[7] == 0xcd) { returnVal = TRUE; }
          break;
-      // child 3 (CHILD3_OFF) -- accepts ONLY the DUT
+      // child 3 (CHILD3_ON) -- accepts ONLY the DUT
       case 0xd9:
-         returnVal = FALSE;
+         if (ieee802514_header->src.addr_64b[7] == 0xcd) { returnVal = TRUE; }
          break;
       default:
          // unknown board: behave like root/DUT so the network is not broken
