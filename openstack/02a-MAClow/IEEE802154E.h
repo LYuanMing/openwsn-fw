@@ -340,6 +340,12 @@ typedef struct {
     // the periodic STATUS frames and inflated the measured current.
     uint32_t numSkipOwn;             // slots I skipped because of my own throttle_factor
     uint32_t numSkipNeighbor;        // slots I skipped because a neighbour throttles
+    // Denominator for the skip counters. The throttle check only runs on slots
+    // that really are an ACTIVE cell -- activity_ti1ORri1() returns early with
+    // "this is NOT the next active slot" for every other slot (IEEE802154E.c:1006).
+    // So numSkipOwn/numActiveSlots is the number to compare with (2^f-1)/2^f,
+    // NOT numSkipOwn/delta_ASN.
+    uint32_t numActiveSlots;         // active-cell slots that reached the throttle check
 } ieee154e_stats_t;
 END_PACK
 

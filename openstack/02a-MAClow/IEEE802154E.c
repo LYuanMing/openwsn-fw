@@ -1013,6 +1013,11 @@ port_INLINE void activity_ti1ORri1(void) {
   // check whether the node should skip the slot
 #if ENERGY_THROTTLE
   if (ieee154e_vars.slotOffset != 0) {
+      // Denominator for numSkipOwn/numSkipNeighbor. Note the guard above: the
+      // throttle deliberately never skips the slotOffset==0 cell, which is the
+      // shared EB cell used to stay synchronised. Counting inside the guard makes
+      // numSkipOwn/numActiveSlots directly comparable with (2^f-1)/2^f.
+      ieee154e_stats.numActiveSlots++;
       // if this slot is what I should skip, then I skip
       // if this slot is what my neighbor skip, then I skip
       asn_low32 = (uint32_t)ieee154e_vars.asn.bytes0and1 | ((uint32_t)ieee154e_vars.asn.bytes2and3 << 16);
