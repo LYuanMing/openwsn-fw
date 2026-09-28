@@ -782,11 +782,19 @@ void isr_openserial_tx(void) {
 
         if (openserial_vars.fInhibited == TRUE) {
             uart_setCTS(FALSE);
-            openserial_vars.fBusyFlushing = FALSE;
         } else {
             uart_setCTS(TRUE);
         }
+        // FIX (battery-free perf build): release the flush lock in BOTH branches.
+        // Upstream only cleared fBusyFlushing when inhibited. If inhibitStop() landed
+        // between uart_writeByte() and the TXDRDY interrupt, the else-branch left
+        // fBusyFlushing == TRUE forever -> openserial_flush() became a no-op and the
+        // output buffer never drained. Observed on the running target:
+        //   fInhibited=1 ctsStateChanged=1 fBusyFlushing=1, outputBufIdxW=13 IdxR=1
+        // (i.e. 12 bytes queued, zero transmitted, UART enabled and IRQ unmasked).
+        openserial_vars.fBusyFlushing = FALSE;
         openserial_vars.ctsStateChanged = FALSE;
+        openserial_flush();     // continue draining now that the lock is free
     } else if (openserial_vars.fInhibited == TRUE) {
         // currently inhibited
 

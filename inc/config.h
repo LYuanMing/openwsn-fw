@@ -390,7 +390,7 @@
  *
  */
 #ifndef DAGROOT
-#define DAGROOT (0)
+#define DAGROOT (1)
 #endif
 
 /**

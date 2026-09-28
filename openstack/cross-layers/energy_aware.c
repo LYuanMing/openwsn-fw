@@ -12,7 +12,7 @@ extern ieee154e_vars_t ieee154e_vars;
 // not declare index(), so the original name compiled under Embedded Studio.
 static uint8_t ea_index;
 static uint8_t direction = 0;
-static uint16_t current_voltage = 2200;
+static uint16_t current_voltage = 4200;
 #define FIXED_ENERGY 1
 
 // ---- two-phase join (user idea, 2026-09-26) -------------------------------
@@ -41,7 +41,7 @@ static uint16_t current_voltage = 2200;
 #define EA_JOIN_MV 0
 #endif
 #ifndef EA_TARGET_MV
-#define EA_TARGET_MV 2200
+#define EA_TARGET_MV 4200
 #endif
 #ifndef EA_JOIN_SLOTS
 #define EA_JOIN_SLOTS 4294967295u

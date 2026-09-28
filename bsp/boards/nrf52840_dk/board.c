@@ -38,10 +38,11 @@ void board_init(void) {
     leds_init();
     
     //debugpins_init();
-#if SUPER_LOW_POWER
-#else
+    // UART is enabled unconditionally (perf-test instrumentation):
+    // SUPER_LOW_POWER=1 skips uart_init() -> UART0 stays disabled
+    // (PSEL=0xFFFFFFFF, ENABLE=0) so openserial emits nothing at all.
+    // Keep SUPER_LOW_POWER=1 for the radio/HFCLK paths: only the UART moves.
     uart_init();
-#endif
     sctimer_init();
     radio_init();
 

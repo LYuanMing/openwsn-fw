@@ -494,7 +494,18 @@ static void hfclock_start(void) {
 }
 
 static void hfclock_stop(void) {
-    
+    // FIX (battery-free perf build): keep HFCLK running.
+    // SUPER_LOW_POWER=1 stops HFCLK after every radio operation, but the nRF52840
+    // UART derives its baud rate from HFCLK: with HFCLK off the UART silently
+    // stalls -- TXD keeps the last byte, EVENTS_TXDRDY never sets, the TX ISR is
+    // never entered, and openserial's TX chain deadlocks after the first byte
+    // (observed: TXD=0x7E, EVENTS_TXDRDY=0, breakpoint on UARTE0_UART0_IRQHandler
+    //  not hit in 3 s, outputBufIdxW=13 / IdxR=1).
+    // Keeping HFCLK on costs extra current, which is irrelevant here: the perf
+    // campaign is USB-powered and measures protocol KPIs, not power (the power
+    // matrix was measured with UART disabled and is unaffected).
+    return;
+
     // check clock source
     if((NRF_CLOCK->HFCLKSTAT & 0x00000001) != 0) {
         

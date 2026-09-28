@@ -15,8 +15,8 @@
 
 //=========================== defines =========================================
 
-#define UART_RX_PIN       NRF_GPIO_PIN_MAP(0,2) // p0.08
-#define UART_TX_PIN       NRF_GPIO_PIN_MAP(0,4) // p0.06
+#define UART_RX_PIN       NRF_GPIO_PIN_MAP(0,8) // p0.08
+#define UART_TX_PIN       NRF_GPIO_PIN_MAP(0,6) // p0.06
 #define UART_CTS_PIN      NRF_GPIO_PIN_MAP(0,7) // p0.07
 #define UART_RTS_PIN      NRF_GPIO_PIN_MAP(0,5) // p0.05
 
@@ -50,6 +50,14 @@ uart_vars_t uart_vars;
 void uart_init(void) {
     // reset local variables
     memset(&uart_vars,0,sizeof(uart_vars_t));
+
+    // FIX (battery-free perf build): the UART derives its baud rate from HFCLK.
+    // With SUPER_LOW_POWER=1 the radio stops HFCLK after every operation, which
+    // silently stalls UART TX (TXD keeps the last byte, EVENTS_TXDRDY never sets).
+    // The UART now owns its clock requirement explicitly.
+    NRF_CLOCK->EVENTS_HFCLKSTARTED = 0;
+    NRF_CLOCK->TASKS_HFCLKSTART    = 1;
+    while (NRF_CLOCK->EVENTS_HFCLKSTARTED == 0) { }
 
     NRF_P0->PIN_CNF[UART_TX_PIN] = ((uint32_t)GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos)
                                | ((uint32_t)GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos)
