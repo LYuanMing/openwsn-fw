@@ -195,7 +195,11 @@ void _uinject_task_cb(void) {
     memcpy(&payload[len],  &ticksInTotal, sizeof(ticksInTotal));
     len += sizeof(ticksInTotal);
 
-    if (sock_udp_send(&_sock, payload, len, &remote) > 0) {
+    int32_t sendRc = (int32_t)sock_udp_send(&_sock, payload, len, &remote);
+    // DEBUG (perf bring-up): the counter is bumped *before* the send, so a rising
+    // counter does NOT prove the packet left the node -- log the actual result.
+    openserial_printf("uinject send rc=%d len=%u", (int)sendRc, (unsigned)len);
+    if (sendRc > 0) {
         // set busySending to TRUE
         uinject_vars.busySendingUinject = TRUE;
     }
