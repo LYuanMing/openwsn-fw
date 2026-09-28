@@ -296,7 +296,7 @@
  *
  */
 #ifndef OPENWSN_FORCETOPOLOGY_C
-#define OPENWSN_FORCETOPOLOGY_C (0)
+#define OPENWSN_FORCETOPOLOGY_C (1)
 #endif
 
 
@@ -379,7 +379,7 @@
  *
  */
 #ifndef SLOPSKIP
-#define SLOTSKIP (0)
+#define SLOTSKIP (1)
 #endif
 
 

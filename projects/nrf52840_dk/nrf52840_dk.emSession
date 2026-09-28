@@ -6,7 +6,6 @@
  </Bookmarks>
  <Breakpoints groups="Breakpoints" active_group="Breakpoints">
   <BreakpointListItem trigger="" line="30" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" stopAll="false" group="Breakpoints" type="Breakpoint" state="4" filename="../common/01bsp_leds/01bsp_leds.c" useHWbreakpoint="false"/>
-  <BreakpointListItem trigger="" line="933" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" stopAll="false" group="Breakpoints" type="Breakpoint" state="2" filename="../../openstack/02a-MAClow/IEEE802154E.c" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="230" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" stopAll="false" group="Breakpoints" type="Breakpoint" state="2" filename="../../openstack/04-TRAN/sock/sock.c" useHWbreakpoint="false"/>
   <BreakpointListItem trigger="" line="59" counter="0" hardwareBreakpoint="" isFunctionBreakpoint="false" action="" expression="" stopAll="false" group="Breakpoints" type="Breakpoint" state="2" filename="../../openstack/02a-MAClow/topology.c" useHWbreakpoint="false"/>
  </Breakpoints>
@@ -67,7 +66,7 @@
  </TraceWindow>
  <Watch1>
   <Watches active="1" update="Never">
-   <Watchpoint expression="ieee154e_vars" name="ieee154e_vars" radix="-1" linenumber="1072" filename="../../openstack/02a-MAClow/IEEE802154E.c"/>
+   <Watchpoint expression="ieee154e_vars" name="ieee154e_vars" radix="-1" linenumber="4043" filename="../../openstack/02a-MAClow/IEEE802154E.c"/>
    <Watchpoint expression="openqueue_vars" name="openqueue_vars" radix="-1" linenumber="468" filename="../../openstack/cross-layers/openqueue.c"/>
    <Watchpoint expression="msg" name="msg" radix="-1" linenumber="72" filename="../../openstack/03a-IPHC/openbridge.c"/>
    <Watchpoint expression="idmanager_vars" name="idmanager_vars" radix="-1" linenumber="107" filename="../../openstack/cross-layers/idmanager.c"/>
@@ -87,16 +86,16 @@
   <SessionOpenFile windowGroup="DockEditLeft" x="10" y="6" useTextEdit="1" path="../../bsp/boards/leds.h" left="0" top="0" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="5" y="26" useTextEdit="1" path="../../bsp/boards/nrf52840_dk/leds.c" left="0" top="12" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="14" y="208" useTextEdit="1" path="../../bsp/boards/nrf52840_dk/sdk/nrf52840.h" left="0" top="198" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="644" useTextEdit="1" path="../../openstack/02a-MAClow/IEEE802154E.c" left="0" top="644" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="28" useTextEdit="1" path="../../bsp/boards/nrf52840_dk/board.c" left="0" top="26" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="5" y="338" useTextEdit="1" path="../../openstack/02a-MAClow/IEEE802154E.c" left="0" top="325" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="23" y="39" useTextEdit="1" path="../../bsp/boards/nrf52840_dk/board.c" left="0" top="26" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="10" y="17" useTextEdit="1" path="../common/03oos_openwsn/03oos_openwsn.c" left="0" top="7" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="2" y="387" useTextEdit="1" path="../../inc/config.h" left="0" top="379" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="15" y="392" useTextEdit="1" path="../../inc/config.h" left="0" top="373" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" path="../../openstack/02a-MAClow/topology.h" left="0" top="12" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="33" y="22" useTextEdit="1" path="../../openapps/utemperature/utemperature.c" left="0" top="22" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="37" y="747" useTextEdit="1" path="../../openstack/02b-MAChigh/neighbors.c" left="0" top="708" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="24" y="54" useTextEdit="1" path="../../openstack/02a-MAClow/topology.c" left="0" top="47" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="9" y="108" useTextEdit="1" path="../../openstack/02a-MAClow/topology.c" left="0" selected="1" top="105" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="64" y="22" useTextEdit="1" path="../../bsp/boards/nrf52840_dk/adc.c" left="0" top="16" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="14" y="46" useTextEdit="1" path="../../openstack/02a-MAClow/IEEE802154E.h" left="0" top="39" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="38" y="32" useTextEdit="1" path="../../openstack/02a-MAClow/IEEE802154E.h" left="0" top="0" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="21" y="10" useTextEdit="1" path="../../kernel/scheduler.h" left="0" top="10" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="513" useTextEdit="1" path="../../bsp/boards/nrf52840_dk/radio.c" left="0" top="502" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="12" y="8" useTextEdit="1" path="../../openstack/cross-layers/energy_aware.h" left="0" top="2" codecName="Default"/>
@@ -112,9 +111,9 @@
   <SessionOpenFile windowGroup="DockEditLeft" x="20" y="67" useTextEdit="1" path="../../kernel/openos/scheduler.c" left="0" top="30" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="2" y="198" useTextEdit="1" path="../../inc/opendefs.h" left="0" top="161" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="37" y="31" useTextEdit="1" path="../../openstack/02b-MAChigh/neighbors.h" left="0" top="19" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="452" useTextEdit="1" path="../../openstack/02a-MAClow/IEEE802154.c" left="0" top="424" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="56" y="427" useTextEdit="1" path="../../openstack/02a-MAClow/IEEE802154.c" left="0" top="415" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="44" y="13" useTextEdit="1" path="../../bsp/boards/nrf52840_dk/adc.h" left="0" top="3" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="38" y="42" useTextEdit="1" folds0="45" path="../../openstack/cross-layers/energy_aware.c" left="0" selected="1" top="36" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="67" y="11" useTextEdit="1" path="../../openstack/cross-layers/energy_aware.c" left="0" top="11" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="297" useTextEdit="1" path="../../openstack/04-TRAN/sock/sock.c" left="0" top="283" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="8" y="24" useTextEdit="1" path="../../openstack/04-TRAN/udp.c" left="0" top="18" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="5" y="20" useTextEdit="1" path="../../openstack/04-TRAN/udp.h" left="0" top="1" codecName="Default"/>
@@ -123,9 +122,9 @@
   <SessionOpenFile windowGroup="DockEditLeft" x="5" y="64" useTextEdit="1" path="../../openstack/03b-IPv6/forwarding.h" left="0" top="27" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="42" y="79" useTextEdit="1" path="../../openstack/03a-IPHC/openbridge.c" left="0" top="42" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="12" y="356" useTextEdit="1" path="../../openstack/03a-IPHC/frag.c" left="0" top="344" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="46" y="21" useTextEdit="1" path="../../openstack/02b-MAChigh/schedule.h" left="0" top="15" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="11" useTextEdit="1" path="../../openstack/02b-MAChigh/schedule.h" left="0" top="6" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="4" useTextEdit="1" path="../../openapps/utemperature/utemperature.h" left="0" top="0" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="5" y="57" useTextEdit="1" path="../../openstack/cross-layers/idmanager.h" left="0" top="21" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="9" y="44" useTextEdit="1" path="../../openstack/cross-layers/idmanager.h" left="0" top="22" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="44" y="19" useTextEdit="1" path="../../bsp/boards/nrf52840_dk/debugpins.c" left="0" top="19" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="198" useTextEdit="1" path="../../bsp/boards/nrf52840_dk/sdk/cmsis_gcc.h" left="0" top="197" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="18" y="458" useTextEdit="1" path="../../drivers/common/opentimers.c" left="0" top="422" codecName="Default"/>
@@ -133,8 +132,10 @@
   <SessionOpenFile windowGroup="DockEditLeft" x="31" y="26" useTextEdit="1" path="../../bsp/boards/debugpins.h" left="0" top="15" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="0" y="71" useTextEdit="1" path="../../bsp/boards/nrf52840_dk/sdk/ses_startup_nrf52840.s" left="0" top="66" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="51" y="29" useTextEdit="1" path="../../bsp/boards/nrf52840_dk/board_info.h" left="0" top="15" codecName="Default"/>
-  <SessionOpenFile windowGroup="DockEditLeft" x="42" y="65" useTextEdit="1" path="../../openstack/02b-MAChigh/schedule.c" left="0" top="53" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="17" y="1" useTextEdit="1" path="../../openstack/02b-MAChigh/schedule.c" left="0" top="0" codecName="Default"/>
   <SessionOpenFile windowGroup="DockEditLeft" x="14" y="110" useTextEdit="1" path="../../openapps/openapps.c" left="0" top="79" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="0" y="0" useTextEdit="1" path="../../openstack/02a-MAClow/IEEE802154.h" left="0" top="80" codecName="Default"/>
+  <SessionOpenFile windowGroup="DockEditLeft" x="20" y="89" useTextEdit="1" path="../../openstack/cross-layers/idmanager.c" left="0" top="83" codecName="Default"/>
  </Files>
  <EMStudioWindow activeProject="03oos_openwsn" fileDialogDefaultFilter="*" autoConnectTarget="J-Link" buildConfiguration="Debug" sessionSettings="" debugSearchFileMap="" fileDialogInitialDirectory="E:/Project/openwsn-fw/bsp/boards" debugSearchPath="" autoConnectCapabilities="3199"/>
 </session>

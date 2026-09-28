@@ -331,12 +331,22 @@ void ieee154e_orderToASNStructure(uint8_t *in, asn_t *val_asn) {
 This function executes in ISR mode, when the new slot timer fires.
 */
 void isr_ieee154e_newSlot(opentimers_id_t id) {
-  //if(ieee154e_vars.asn.bytes0and1 % 10 == 0) {
-  //  ieee154e_vars.startOfSlotReference = opentimers_getCurrentCompareValue()-1;
-  //}
-  //else {
+#if XTAL_COMPENSATION
+  // DK board's 32.768 kHz sleep crystal differs from the bare nRF52840 module
+  // crystal used by the relay/DUT and the root external board. Without this
+  // periodic re-anchor the slot timing reference drifts and child nodes lose
+  // sync to the parent — which manifests as fewer-than-expected children
+  // connecting during the multi-leaf validation experiment (2026-09-11).
+  // DO NOT enable on root/DUT — they share the same crystal as the parent.
+  if(ieee154e_vars.asn.bytes0and1 % 10 == 0) {
+    ieee154e_vars.startOfSlotReference = opentimers_getCurrentCompareValue()-1;
+  }
+  else {
     ieee154e_vars.startOfSlotReference = opentimers_getCurrentCompareValue();
-  //}
+  }
+#else
+  ieee154e_vars.startOfSlotReference = opentimers_getCurrentCompareValue();
+#endif
   opentimers_scheduleAbsolute(ieee154e_vars.timerId,                 // timerId
                               TsSlotDuration,                        // duration
                               ieee154e_vars.startOfSlotReference,    // reference

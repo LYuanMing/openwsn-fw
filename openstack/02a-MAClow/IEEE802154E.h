@@ -46,6 +46,33 @@ static const uint8_t ebIEsBytestream[] = {
 #ifndef EB_PORTION
 #define EB_PORTION                  3 // set EB on minimal cell for 1/EB_PORTION portion
 #endif
+// Per-build crystal-drift compensation. The DK board's 32.768 kHz sleep
+// crystal differs from the bare nrf52840 module crystal used by the relay/
+// DUT and the root external board. Only DK boards (leaf boards) should enable
+// this; root and DUT (same crystal) MUST NOT enable it (the +1/-1 tick
+// re-anchor is unnecessary and degrades sync quality). Default 0 (disabled).
+#ifndef XTAL_COMPENSATION
+#define XTAL_COMPENSATION           0
+#endif
+// Per-build leaf-on gating (Round 6, 2026-09-11). Topology.c reads these to
+// decide which of the 5 leaf boards (EUI64[7] = 0xe4/0xcd/0x18/0xba/0x38)
+// accept DUT's frames. LEAFi_ON=0 -> reject all (board still powered, just
+// never becomes a child). Default 1 (all leaves accept DUT, previous behavior).
+#ifndef LEAF1_ON
+#define LEAF1_ON                    1
+#endif
+#ifndef LEAF2_ON
+#define LEAF2_ON                    1
+#endif
+#ifndef LEAF3_ON
+#define LEAF3_ON                    1
+#endif
+#ifndef LEAF4_ON
+#define LEAF4_ON                    1
+#endif
+#ifndef LEAF5_ON
+#define LEAF5_ON                    1
+#endif
 #ifndef MAXKAPERIOD
 #define MAXKAPERIOD               1000  // in slots: 1500@20ms per slot -> ~30 seconds. Max value used by adaptive synchronization.
 #endif
