@@ -1,0 +1,50 @@
+
+====================================================================
+windlog summary
+====================================================================
+run               : 778.1 s wall
+wind frames logged: 711   (incomplete blocks: 0, unparsed lines: 0)
+csv               : wind_20260929.csv   (+711 rows this run)
+raw log           : wind_20260929.raw.txt
+board time span   : 2 runs concatenated (board restarted 1 time(s))
+age_ms            : min 0  max 1  mean 0.0   (stale marked: 0)
+
+values                       min          mean           max
+  vec_speed              0.00          0.84          2.95
+  vec_hor                0.00        145.85        350.90
+  vec_ver                0.00         77.70        117.70
+  sca_speed              0.00          0.88          2.97
+  sca_hor                0.00        186.09        359.10
+  sca_ver                0.00         86.38        173.70
+  level                  0.00          1.00          2.00
+  temp_c                34.60         38.34         40.80
+  sound_ms               0.00        347.94        356.78
+  rt_speed               0.00          0.87          2.96
+  rt_hor                 0.00        181.52        357.10
+  rt_ver                 0.00         85.72        171.00
+  x                     -1.25          0.19          2.60
+  y                     -1.34          0.31          2.58
+  z                     -0.59         -0.05          0.77
+
+raw32 cross-check (independent re-decode):
+  frames with raw32 : 711
+  mismatching frames: 0
+  |sound - (331.3+0.606*T)| : mean 8.27 m/s, max 352.39 m/s (last 711 frames)
+
+link counters (last - first):
+  frame     +3877   (last 3910)
+  timeout   +0   (last 109)
+  badframe  +6   (last 6)
+  retry     +3   (last 58)
+  txtmo     +0   (last 0)
+  ovf       +0   (last 0)
+  rej       +0   (last 0)
+  drop      +0   (last 0)
+  uart_err  +5   (last 5)
+  maxgap    +0   (last 23638)
+  state           : 0
+
+bad frames shown  : 3
+  9F 00 00 01 62  n=5 maxgap=133ms exc=0x00
+  8A 7D 01 00 00 BA  n=6 maxgap=131ms exc=0x00
+  34 04 62  n=3 maxgap=134ms exc=0x00

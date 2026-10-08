@@ -7,6 +7,9 @@
 #define __ADC_H__
 
 #include "board_info.h"
+#include "board.h"
+#include "nrf52840_bitfields.h"
+#include "nrf52840.h"
 
 //=========================== define ==========================================
 
@@ -17,6 +20,6 @@
 //=========================== prototypes ======================================
 
 void adc_init(void);
-uint16_t adc_read(void);
+int16_t adc_read(void);
 
 #endif // __ADC_SENSOR_H__
