@@ -15,6 +15,14 @@ static uint8_t direction = 0;
 static uint16_t current_voltage = 4200;
 #define FIXED_ENERGY 1
 
+// perf3: host-driven energy state (solar-panel emulation).  Off by default --
+// a real-light build is bit-for-bit unchanged.  When 1 the host pushes the
+// capacitor voltage computed by perf3/harness/energy_emulator.py instead of
+// the node deriving it from the ADC.  See perf3/firmware/EMUL_NOTES.md.
+#ifndef PERF3_HOST_VOLTAGE
+#define PERF3_HOST_VOLTAGE 0
+#endif
+
 // ---- two-phase join (user idea, 2026-09-26) -------------------------------
 // "join at full duty, then switch to the working point after a given ASN"
 //
@@ -191,3 +199,14 @@ uint16_t rpl_energy_penalty(void) {
     }
     return f_penalty;
 }
+#if PERF3_HOST_VOLTAGE
+// Emulation only.  Sets the supply voltage the throttle is derived from; the
+// periodic task re-reads current_voltage, so this is also the value that
+// persists between host updates.
+void ea_set_voltage_mv(uint16_t mv) {
+    current_voltage = mv;
+    energy_vars.voltage_mV = mv;
+    energy_vars.e_surplus_uJ = CALCULATE_ENERGY_UJ(mv);
+    update_throttle_factor();
+}
+#endif

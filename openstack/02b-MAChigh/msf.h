@@ -35,6 +35,31 @@
 #define LIM_NUMCELLSUSED_LOW           MSF_LIM_NUMCELLSUSED_LOW
 #endif
 
+// perf3: hard cap on TX cells negotiated with the preferred parent.  0 = off
+// (MSF default: grow while usage > LIM_NUMCELLSUSED_HIGH).  With
+// PERF3_MAX_TX_CELLS=1 the node keeps exactly one upward slot and deletes any
+// surplus, so the uplink rate is bounded by one packet per slotframe.
+#ifndef PERF3_MAX_TX_CELLS
+#define PERF3_MAX_TX_CELLS            0
+#endif
+
+// perf3 2026-10-13: ENERGY admission rule for the uplink cell count.
+//
+// 0 = off (stock MSF: only the traffic thresholds decide).  Non-zero = the
+// minimum supply voltage (mV) at which the node is allowed to HOLD a negotiated
+// (dedicated) TX cell to its preferred parent.  Below it the node keeps only the
+// autonomous shared TX cell -- the one sixtop_send_internal() installs at the
+// parent's hash offset and which carries the bulk of the traffic anyway
+// (measured 2026-10-13: 61% of the DUT DATA frames at lambda=60/f=0).
+//
+// This composes with PERF3_MAX_TX_CELLS: gate open -> that cap applies,
+// gate shut -> 0 negotiated cells.  Enforcement is two-sided (refuse to
+// allocate, and shed a held cell) -- see the block above msf_trigger6pAdd().
+// Set from the host with `scons perf3_energy_cell_gate_mv=4032`.
+#ifndef PERF3_ENERGY_CELL_GATE_MV
+#define PERF3_ENERGY_CELL_GATE_MV     0
+#endif
+
 #define HOUSEKEEPING_PERIOD          30000 // miliseconds
 #define QUARANTINE_DURATION            300 // seconds
 #define WAITDURATION_MIN             30000 // miliseconds

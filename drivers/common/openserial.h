@@ -54,6 +54,8 @@
 #define SERFRAME_PC2MOTE_RESET                   ((uint8_t)'Q')
 #define SERFRAME_PC2MOTE_DATA                    ((uint8_t)'D')
 #define SERFRAME_PC2MOTE_TRIGGERSERIALECHO       ((uint8_t)'S')
+// perf3 solar-panel emulation: 'M' + uint16 LE millivolts, host-computed.
+#define SERFRAME_PC2MOTE_VOLTAGE                 ((uint8_t)'M')
 
 //=========================== macros =========================================
 

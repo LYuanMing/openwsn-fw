@@ -4,6 +4,44 @@ Import('env')
 
 localEnv = env.Clone()
 
+# perf3: solar-panel emulation build variant (see code/perf3/firmware/EMUL_NOTES.md).
+# Injected here, right after the clone, because a CPPDEFINES append in the ROOT
+# SConscript did not reach this sub-tree's clone (measured: the define showed up
+# in only one translation unit and energy_aware.o was built without it).
+# perf3: DAGROOT and PANID must be injected HERE, not only in openapps/.
+# idmanager.c (#if DAGROOT -> isDAGroot / prefix) and the PANID consumer live
+# under openstack/, and openapps/SConscript clones only the apps sub-tree.
+# Measured 2026-10-04: with the define injected only in openapps/, COM30 was
+# flashed "as root" but still behaved as a normal node (uinject kept running,
+# which uinject.c:262 suppresses for a real DAG root) -- i.e. the flag never
+# reached the code that uses it.
+_dagroot = ARGUMENTS.get('dagroot', '')
+if _dagroot:
+    localEnv.Append(CPPDEFINES='DAGROOT=%s' % _dagroot)
+
+_panid = ARGUMENTS.get('panid', '')
+if _panid:
+    localEnv.Append(CPPDEFINES='PANID_DEFINED=(%s)' % _panid)
+
+_hv = ARGUMENTS.get('perf3_host_voltage', '0')
+if _hv not in ('0', '', None):
+    localEnv.Append(CPPDEFINES='PERF3_HOST_VOLTAGE=%s' % _hv)
+
+# perf3_max_tx_cells: cap the number of TX cells negotiated with the preferred
+# parent (0 = off, MSF default).  perf3_max_tx_cells=1 forces upstream traffic
+# onto a single slot per slotframe.  See code/perf3/README.md.
+_mtc = ARGUMENTS.get('perf3_max_tx_cells', '0')
+if _mtc not in ('0', '', None):
+    localEnv.Append(CPPDEFINES='PERF3_MAX_TX_CELLS=%s' % _mtc)
+
+# perf3_energy_cell_gate_mv: energy-gated uplink cell count (0 = off, stock
+# MSF).  Non-zero = the minimum capacitor voltage (mV) at which the node may
+# hold a negotiated dedicated TX cell; below it only the autonomous shared cell
+# survives.  See the comment block in msf.c above msf_trigger6pAdd().
+_ecg = ARGUMENTS.get('perf3_energy_cell_gate_mv', '0')
+if _ecg not in ('0', '', None):
+    localEnv.Append(CPPDEFINES='PERF3_ENERGY_CELL_GATE_MV=%s' % _ecg)
+
 target = 'libopenstack'
 sources_c = [
     'openstack.c',

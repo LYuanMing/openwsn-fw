@@ -1,4 +1,5 @@
 #include "opendefs.h"
+
 #include "forwarding.h"
 #include "iphc.h"
 #include "openqueue.h"
@@ -11,6 +12,22 @@
 #include "udp.h"
 #include "debugpins.h"
 #include "scheduler.h"
+// perf3 2026-10-05 READ-ONLY: the three exits
+volatile uint32_t perf3_fwdSendDone = 0;
+volatile uint32_t perf3_fwdSendCalls = 0;
+volatile uint32_t perf3_fwdIphcFail = 0;
+volatile uint32_t perf3_fwdIphcOk = 0;
+volatile uint32_t perf3_fwdRouteFail = 0;
+volatile uint32_t perf3_fwdRouteOk = 0;
+volatile uint32_t perf3_fwdUdpCreatorSeen = 0;
+volatile uint32_t perf3_fwdOtherCreatorSeen = 0;
+volatile uint8_t perf3_fwdUdpCreatorL4 = 0;
+volatile uint32_t perf3_fwdRelayedFreed = 0;
+volatile uint32_t perf3_fwdOwnPacket = 0;
+volatile uint32_t perf3_fwdUdpDone = 0;
+volatile uint32_t perf3_fwdWrongProto = 0;
+volatile uint8_t perf3_fwdOwnCreator = 0;
+volatile uint8_t perf3_fwdOwnL4Proto = 0;
 
 //=========================== variables =======================================
 
@@ -63,6 +80,11 @@ at this mote.
 \param[in,out] msg Packet to send.
 */
 owerror_t forwarding_send(OpenQueueEntry_t *msg) {
+    // perf3 2026-10-05 READ-ONLY: entry + both exits of forwarding_send().
+    // udp_transmit() (udp.c:50) frees the packet when this returns E_FAIL and
+    // sends NO notification -- exactly the freeze signature: n_tx advances,
+    // n_sent_done never does, busySendingUinject stays TRUE for good.
+    perf3_fwdSendCalls++;
     ipv6_header_iht ipv6_outer_header;
     ipv6_header_iht ipv6_inner_header;
     rpl_option_ht rpl_option;
@@ -201,13 +223,15 @@ owerror_t forwarding_send(OpenQueueEntry_t *msg) {
                            p_src,
                            PCKTSEND
     ) == E_FAIL){
+        perf3_fwdIphcFail++;   /* perf3: iphc_prependIPv6Header() refused it */
         return E_FAIL;
     }
+    perf3_fwdIphcOk++;
 
     // both of them are compressed
     ipv6_outer_header.next_header_compressed = TRUE;
 
-    return forwarding_send_internal_RoutingTable(
+    owerror_t perf3_routeResult = forwarding_send_internal_RoutingTable(
             msg,
             &ipv6_outer_header,
             &ipv6_inner_header,
@@ -218,6 +242,9 @@ owerror_t forwarding_send(OpenQueueEntry_t *msg) {
             &flow_label,
             PCKTSEND
     );
+    if (perf3_routeResult == E_FAIL) { perf3_fwdRouteFail++; }
+    else { perf3_fwdRouteOk++; }
+    return perf3_routeResult;
 }
 
 /**
@@ -244,9 +271,24 @@ void forwarding_sendDone(OpenQueueEntry_t *msg, owerror_t error) {
         // this is a packet created by this mote
 
         // indicate sendDone to upper layer
+        perf3_fwdOwnPacket++;
+        perf3_fwdOwnCreator = (uint8_t)msg->creator;
+        // perf3 2026-10-05: count PER CREATOR.  RPL's ICMPv6 traffic
+        // (DIO/DAO, creator=COMPONENT_ICMPv6RPL=0x18) dominates, so a single
+        // "last creator" register always showed RPL and I wrongly read those
+        // as the application's packets (appendix Y).  The UDP path is
+        // creator==COMPONENT_SOCK_TO_UDP (0x1a).
+        if (msg->creator == COMPONENT_SOCK_TO_UDP) {
+            perf3_fwdUdpCreatorSeen++;
+            perf3_fwdUdpCreatorL4 = (uint8_t)msg->l4_protocol;
+        } else {
+            perf3_fwdOtherCreatorSeen++;
+        }
+        perf3_fwdOwnL4Proto = (uint8_t)msg->l4_protocol;
         switch (msg->l4_protocol) {
 #if OPENWSN_UDP_C
             case IANA_UDP:
+                perf3_fwdUdpDone++;
                 udp_sendDone(msg, error);
                 break;
 #endif
@@ -255,6 +297,7 @@ void forwarding_sendDone(OpenQueueEntry_t *msg, owerror_t error) {
                 break;
             default:
                 // log error
+            perf3_fwdWrongProto++;
                 LOG_CRITICAL(COMPONENT_FORWARDING, ERR_WRONG_TRAN_PROTOCOL,
                              (errorparameter_t) msg->l4_protocol,
                              (errorparameter_t) 0);

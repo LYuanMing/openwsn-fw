@@ -4,6 +4,43 @@ Import('env')
 
 localEnv = env.Clone()
 
+# perf3: solar-panel emulation build variant (see code/perf3/firmware/EMUL_NOTES.md).
+# Injected here, right after the clone, because a CPPDEFINES append in the ROOT
+# SConscript did not reach this sub-tree's clone (measured: the define showed up
+# in only one translation unit and energy_aware.o was built without it).
+_hv = ARGUMENTS.get('perf3_host_voltage', '0')
+if _hv not in ('0', '', None):
+    localEnv.Append(CPPDEFINES='PERF3_HOST_VOLTAGE=%s' % _hv)
+
+# uinject packet period:  period_ms = 60000 / lambda_pkt_min
+#   scons ... apps=uinject uinject_period_ms=15000 oos_openwsn
+# uinject.h has an #ifndef default of 2000 ms; without this mapping the
+# command-line value is silently ignored and every lambda ladder point runs
+# at 30 pkt/min (measured 2026-10-02: n_gen advanced at 30/min even though
+# uinject_period_ms=15000 was passed).
+_period = ARGUMENTS.get('uinject_period_ms', '')
+if _period:
+    localEnv.Append(CPPDEFINES='UINJECT_PERIOD_MS=%s' % _period)
+
+# perf3: per-board DAG root selection.  DAGROOT is a compile-time constant
+# (idmanager.c:29 -- #if DAGROOT sets isDAGroot=TRUE and the bb:bb:: prefix), so
+# one image flashed to every board makes EVERY board a root and a DAG never
+# forms.  It has to be injected HERE, in openapps/, because a CPPDEFINES append
+# in the root SConscript does not reach this sub-tree's clone (measured above).
+_dagroot = ARGUMENTS.get('dagroot', '')
+if _dagroot:
+    localEnv.Append(CPPDEFINES='DAGROOT=%s' % _dagroot)
+
+# perf3: PANID override, so an experiment running next to this bench does not
+# join our network.  Measured 2026-10-04: with PANID_DEFINED=0xcafe (the tree
+# default) the DUT and a child picked a board from ANOTHER experiment as their
+# preferred parent (EUI64 ...FA:68:E4, ACK'd, RSSI -20..-45) and our own root
+# then received nothing.  A different PANID keeps the two networks apart at the
+# 802.15.4 MAC layer.  config.h guards it with #ifndef, so -D wins.
+_panid = ARGUMENTS.get('panid', '')
+if _panid:
+    localEnv.Append(CPPDEFINES='PANID_DEFINED=(%s)' % _panid)
+
 #===== retrieve the list of apps to build
 
 apps = [

@@ -1,4 +1,5 @@
 #include "config.h"
+
 #include "opendefs.h"
 #include "sixtop.h"
 #include "openserial.h"
@@ -18,6 +19,16 @@
 #include "schedule.h"
 #include "msf.h"
 #include "energy_aware.h"
+
+// perf3 2026-10-05 READ-ONLY: send-done chain counters (see appendix V).
+volatile uint32_t perf3_sixtopTaskRuns = 0;
+volatile uint32_t perf3_stSixTop = 0;
+volatile uint32_t perf3_stRes = 0;
+volatile uint32_t perf3_stApp = 0;
+volatile uint32_t perf3_stOther = 0;
+volatile uint8_t perf3_stAppL4 = 0;
+volatile uint32_t perf3_sixtopTaskGotPacket = 0;
+volatile uint32_t perf3_sixtopTaskNullPacket = 0;
 //=========================== define ==========================================
 
 // in seconds: sixtop maintaince is called every 30 seconds
@@ -402,15 +413,38 @@ owerror_t sixtop_send(OpenQueueEntry_t *msg) {
 
 //======= from lower layer
 
+void perf3_getSixtopCreatorSplit(uint32_t *sixTop, uint32_t *res, uint32_t *app,
+                                uint32_t *other, uint8_t *appL4) {
+  if (sixTop) { *sixTop = perf3_stSixTop; }
+  if (res)    { *res    = perf3_stRes; }
+  if (app)    { *app    = perf3_stApp; }
+  if (other)  { *other  = perf3_stOther; }
+  if (appL4)  { *appL4  = perf3_stAppL4; }
+}
+
+void perf3_getSixtopTaskCounters(uint32_t *runs, uint32_t *got, uint32_t *null) {
+  if (runs) { *runs = perf3_sixtopTaskRuns; }
+  if (got)  { *got  = perf3_sixtopTaskGotPacket; }
+  if (null) { *null = perf3_sixtopTaskNullPacket; }
+}
+
 void task_sixtopNotifSendDone(void) {
     OpenQueueEntry_t *msg;
+
+    // perf3 2026-10-05 READ-ONLY, no behaviour change.  This is the first hop
+    // after notif_sendDone() on the send-done chain (see appendix V).  Counting
+    // task runs vs packets actually found separates "the scheduler dropped the
+    // task" from "the task ran but the queue no longer held the packet".
+    perf3_sixtopTaskRuns++;
 
     // get recently-sent packet from openqueue
     msg = openqueue_sixtopGetSentPacket();
     if (msg == NULL) {
+        perf3_sixtopTaskNullPacket++;
         LOG_CRITICAL(COMPONENT_SIXTOP, ERR_NO_SENT_PACKET, (errorparameter_t) 0, (errorparameter_t) 0);
         return;
     }
+    perf3_sixtopTaskGotPacket++;
 
     // take ownership
     msg->owner = COMPONENT_SIXTOP;
@@ -432,6 +466,22 @@ void task_sixtopNotifSendDone(void) {
                 FALSE,
                 &msg->l2_asn
         );
+    }
+
+    // perf3 2026-10-05: PER-CREATOR split of the send-done path (appendix Y.4).
+    // A single "last creator" register is useless here: RPL's control packets
+    // outnumber the application's by an order of magnitude, so the register
+    // always shows RPL and the application's branch looks absent.  Each
+    // destination of this switch gets its own counter.
+    if (msg->creator == COMPONENT_SIXTOP) {
+        perf3_stSixTop++;          /* EB / KA -- freed here */
+    } else if (msg->creator == COMPONENT_SIXTOP_RES) {
+        perf3_stRes++;            /* six2six */
+    } else if (msg->creator == COMPONENT_UINJECT || msg->creator == COMPONENT_SOCK_TO_UDP) {
+        perf3_stApp++;            /* the application's own UDP traffic */
+        perf3_stAppL4 = (uint8_t)msg->l4_protocol;
+    } else {
+        perf3_stOther++;          /* everything else goes to IPHC */
     }
 
     // send the packet to where it belongs
@@ -897,10 +947,37 @@ port_INLINE void sixtop_sendKA(void) {
 
 //======= six2six task
 
+// perf3 2026-10-04 -- READ-ONLY counters, no behaviour change.
+//
+// FREEZE_20261003.md appendix I: when a 6P clear transaction gets no response the
+// stack DISCARDS the cells unilaterally (see timer_sixtop_six2six_timeout_fired
+// below).  These three counters decide whether that path is what ends the
+// freeze, or whether the cells were already gone before the timeout fired.
+//   six2sixTimeoutEvents : how often the timeout handler ran in WAIT_CLEARRESPONSE
+//   cellsRemovedOnTimeout : dedicated TX cells that timeout actually dropped
+//   six2sixEnteredWait    : how many clear transactions were even started
+// Read them over the serial P3 line; do not act on them.
+volatile uint32_t perf3_six2sixTimeoutEvents = 0;
+volatile uint32_t perf3_cellsRemovedOnTimeout = 0;
+volatile uint32_t perf3_six2sixEnteredWait = 0;
+
+// perf3 2026-10-04: how many dedicated TX cells does <neighbor> still have?
+// Used from uinject.c to print "negotiated vs still-present" in one line.
+uint8_t perf3_countTxCellsDedicated(open_addr_t *neighbor) {
+    if (neighbor->type != ADDR_64B) {
+        return 0;
+    }
+    return schedule_getNumberOfNegotiatedCells(neighbor, CELLTYPE_TX);
+}
+
 void timer_sixtop_six2six_timeout_fired(void) {
 
     if (sixtop_vars.six2six_state == SIX_STATE_WAIT_CLEARRESPONSE) {
         // no response for the 6p clear, just clear locally
+        // perf3: count what is about to be dropped, BEFORE dropping it, so the
+        // P3 line can attribute a later d_nocell ramp to this event.
+        perf3_six2sixTimeoutEvents++;
+        perf3_cellsRemovedOnTimeout += perf3_countTxCellsDedicated(&sixtop_vars.neighborToClearCells);
         schedule_removeAllNegotiatedCellsToNeighbor(sixtop_vars.cb_sf_getMetadata(), &sixtop_vars.neighborToClearCells);
         neighbors_resetSequenceNumber(&sixtop_vars.neighborToClearCells);
         memset(&sixtop_vars.neighborToClearCells, 0, sizeof(open_addr_t));
@@ -1676,10 +1753,36 @@ bool sixtop_addCells(
 
     memcpy(&temp_neighbor, previousHop, sizeof(open_addr_t));
 
+    // perf3: hard cap on INSTALLED dedicated TX cells.
+    //
+    // WHY here and not in msf.c: msf_trigger6pAdd() caps what the node REQUESTS,
+    // but the number of cells that exist is decided by the 6P response celllist
+    // and installed unconditionally by the loop below -- so a cap placed on the
+    // request side has no effect on the installed count (measured: n_cell_tx
+    // reached 3-4 with PERF3_MAX_TX_CELLS=1).
+    //
+    // WHY the previous placement broke the uplink: blocking the request also
+    // stopped the first cell from ever being added, while the auto-cell path
+    // (sixtop.c:679) still created a SHARED TX cell -- which
+    // schedule_getNumberOfNegotiatedCells() does not count, because it requires
+    // shared == FALSE (schedule.c:912-916).  The DUT then saw 0 negotiated cells,
+    // dropped every packet at uinject.c:622 (d_nocell) and n_tx collapsed to 0.
+    //
+    // This cap only refuses the SURPLUS: the first dedicated TX cell still
+    // installs, so the uplink keeps working and n_cell_tx reads 1.
+    // The delete path (msf.c:403-412) sheds any cells already above the cap.
     hasCellsAdded = FALSE;
     // add cells to schedule
     for (i = 0; i < CELLLIST_MAX_LEN; i++) {
         if (cellList[i].isUsed) {
+#if PERF3_MAX_TX_CELLS > 0
+            if (type == CELLTYPE_TX && isShared == FALSE) {
+                if (schedule_getNumberOfNegotiatedCells(&temp_neighbor, CELLTYPE_TX)
+                        >= PERF3_MAX_TX_CELLS) {
+                    continue;   /* cap reached: decline the surplus, keep working cells */
+                }
+            }
+#endif
             hasCellsAdded = TRUE;
             schedule_addActiveSlot(cellList[i].slotoffset, type, isShared, FALSE, cellList[i].channeloffset,
                                    &temp_neighbor);

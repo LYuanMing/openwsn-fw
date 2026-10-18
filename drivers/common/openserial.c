@@ -10,6 +10,7 @@
 
 #include "opendefs.h"
 #include "openserial.h"
+#include "energy_aware.h"
 #include "scheduler.h"
 #include "IEEE802154E.h"
 #include "neighbors.h"
@@ -621,6 +622,16 @@ void openserial_handleRxFrame() {
         case SERFRAME_PC2MOTE_DATA:
             openbridge_triggerData();
             break;
+#if PERF3_HOST_VOLTAGE
+        case SERFRAME_PC2MOTE_VOLTAGE:
+            // Host-computed capacitor voltage.  The board does no integration:
+            // it just takes the value and re-derives the throttle factor.
+            if (openserial_vars.inputBufFillLevel >= 3) {
+                ea_set_voltage_mv((uint16_t)openserial_vars.inputBuf[1] |
+                                  ((uint16_t)openserial_vars.inputBuf[2] << 8));
+            }
+            break;
+#endif
         case SERFRAME_PC2MOTE_TRIGGERSERIALECHO:
             openserial_handleEcho(&openserial_vars.inputBuf[1], openserial_vars.inputBufFillLevel - 1);
             break;

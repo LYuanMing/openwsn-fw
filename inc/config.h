@@ -296,7 +296,11 @@
  *
  */
 #ifndef OPENWSN_FORCETOPOLOGY_C
-#define OPENWSN_FORCETOPOLOGY_C (1)
+#define OPENWSN_FORCETOPOLOGY_C (0)   // perf3 2026-10-04: forced topology OFF.
+// With this on, topology.c dispatches by EUI64[7] and the boards cannot hear
+// each other unless a board with that exact EUI64 is present -> neighbors=0,
+// d_nosync=44, no EB.  The bench needs 0; apply_config.py only writes the
+// code/openwsn-fw tree, so this one has to be set here too.
 
 // perf-test bring-up instrumentation. 0 = clean build for measurement runs.
 // Set to 1 (or -DPERF_BRINGUP=1) to re-enable the boot-time UART probes and the
@@ -395,6 +399,13 @@
  *
  */
 #ifndef DAGROOT
+// perf3 2026-10-04: DAGROOT must be 1 on the board that is the DAG root.
+// sixtop_sendEB() (sixtop.c:714) refuses to send anything unless the mote is
+// synced, has security, has a DAGrank, and has sent a DAO.  Those all require
+// having JOINED a network first, which requires hearing someone else's EB -- so
+// with no DAG root the network can never bootstrap: every board waits forever
+// and sixtop_sendEB() returns at its first guard.  Measured symptom: neighbors=0
+// while ieee154e_isSynch() was already TRUE.
 #define DAGROOT (0)
 #endif
 
@@ -404,8 +415,15 @@
  * Set this mote as the DODAG root.
  *
  */
+#ifndef DAGROOT
+#define DAGROOT (0)
+#endif
+
+// perf3: made overridable so an experiment running beside this bench cannot
+// join our network (it did: the DUT chose a foreign board as preferred parent
+// and our root received nothing).  #ifndef so scons ... panid=0xNNNN wins.
 #ifndef PANID_DEFINED
-#define PANID_DEFINED   (0xcafe)
+#define PANID_DEFINED   (0xbeef)
 #endif
 
 // ======================== Board configuration ========================

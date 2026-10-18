@@ -381,6 +381,21 @@ uint16_t ieee154e_getSlotDuration(void);
 
 uint16_t ieee154e_getTimeCorrection(void);
 
+// perf3 2026-10-05 READ-ONLY: exposes the stack's own desync and active-slot
+// counters.  Used to test the appendix-T root cause (stall = EB starvation).
+void ieee154e_getSyncStats(uint8_t *out_numDeSync, uint32_t *out_numActiveSlots);
+// perf3 2026-10-05 READ-ONLY: snapshot of the packet-retrieval counters.
+// perf3 2026-10-05 READ-ONLY: attempts / retries of the packet the MAC holds.
+void perf3_getPendingPacketState(uint8_t *out_havePacket,
+                                 uint8_t *out_numTxAttempts,
+                                 uint8_t *out_retriesLeft);
+
+// perf3 2026-10-05 READ-ONLY: hopping identity (asnOffset / template / freq).
+void ieee154e_getHopInfo(uint8_t *out_asnOffset, uint8_t *out_singleChannel,
+                         uint8_t *out_freq, uint16_t *out_tmplSum);
+
+void perf3_getFetchCounters(uint32_t *offered, uint32_t *fetched,
+                            uint32_t *okTrue, uint32_t *okBlocked);
 void ieee154e_getTicsInfo(uint32_t *numTicsOn, uint32_t *numTicsTotal);
 
 // events

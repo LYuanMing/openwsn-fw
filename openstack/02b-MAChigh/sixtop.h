@@ -152,6 +152,11 @@ owerror_t sixtop_send(OpenQueueEntry_t *msg);
 
 // from lower layer
 void task_sixtopNotifSendDone(void);
+// perf3 2026-10-05 READ-ONLY: snapshot of the sixtop send-done task counters.
+void perf3_getSixtopTaskCounters(uint32_t *runs, uint32_t *got, uint32_t *null);
+// perf3 2026-10-05 READ-ONLY: per-creator split of the sixtop send-done task.
+void perf3_getSixtopCreatorSplit(uint32_t *sixTop, uint32_t *res, uint32_t *app,
+                                uint32_t *other, uint8_t *appL4);
 
 void task_sixtopNotifReceive(void);
 

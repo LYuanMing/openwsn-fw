@@ -229,6 +229,30 @@ uint8_t schedule_getNumberOfFreeEntries(void);
 
 uint8_t schedule_getNumberOfNegotiatedCells(open_addr_t *neighbor, cellType_t cell_type);
 
+// perf3 2026-10-05 READ-ONLY: COUNT the TX cells of <neighbor> in scheduleBuf,
+// split by dedicated / shared / auto.  Counts, never "the first match" -- a
+// first-match probe cannot support a claim about the whole set (see the
+// comment on the definition).  Returns dedicated + shared.
+// perf3 2026-10-05 READ-ONLY: count EVERY TX cell in scheduleBuf, not just
+// one neighbour's.  A DAG root has no preferred parent, so the
+// neighbour-scoped variant reads 0 on it and that 0 gets misread as
+// "the root has no cells" (it was forwarding 124 packets at the time).
+// See FREEZE_20261003.md appendix Q.
+// perf3 2026-10-05 READ-ONLY: RX-side cell counts.
+// perf3 2026-10-05 READ-ONLY: dump up to 6 active cells (18 uint16).
+void schedule_debugDumpCells(uint16_t *out);
+
+uint8_t schedule_debugCountRxCells(uint8_t *out_rx, uint8_t *out_txrx, uint8_t *out_minimal);
+
+uint8_t schedule_debugCountAllTxCells(uint8_t *out_dedicated,
+                                       uint8_t *out_shared,
+                                       uint8_t *out_auto);
+uint8_t schedule_debugCountTxCells(open_addr_t *neighbor,
+                                  uint8_t *out_dedicated,
+                                  uint8_t *out_shared,
+                                  uint8_t *out_auto,
+                                  slotOffset_t *out_firstDedicatedSlot);
+
 bool schedule_isNumTxWrapped(open_addr_t *neighbor);
 
 bool schedule_getCellsToBeRelocated(open_addr_t *neighbor, cellInfo_ht *celllist);

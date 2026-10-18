@@ -250,7 +250,16 @@ void iphc_sendDone(OpenQueueEntry_t *msg, owerror_t error) {
     }
 }
 
+// perf3: how many frames actually reach the IPv6 layer (i.e. survived the
+// MAC).  Distinguishes "the packet never arrived" from "it arrived and was
+// misrouted", which the D-frame count alone cannot do.
+uint32_t perf3_iphc_rx = 0;
+// split by the routing decision: multicast/forwarded-up vs -> openbridge (D frame)
+uint32_t perf3_iphc_fwd = 0;
+uint32_t perf3_iphc_bridge = 0;
+
 void iphc_receive(OpenQueueEntry_t *msg) {
+    perf3_iphc_rx++;
     ipv6_header_iht ipv6_outer_header;
     ipv6_header_iht ipv6_inner_header;
     uint8_t page_length;
@@ -294,6 +303,7 @@ void iphc_receive(OpenQueueEntry_t *msg) {
             packetfunctions_tossHeader(&msg, rpi_length);
         }
 
+        perf3_iphc_fwd++;
         // send up the stack
         forwarding_receive(
                 msg,
@@ -305,6 +315,7 @@ void iphc_receive(OpenQueueEntry_t *msg) {
                 &rpl_option
         );
     } else {
+        perf3_iphc_bridge++;
         openbridge_receive(msg);                   //out to the OpenVisualizer
     }
 }

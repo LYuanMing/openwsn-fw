@@ -55,11 +55,22 @@ elif env['board'] == 'iot-lab_A8-M3':
     env.Append(CPPDEFINES='IOTLAB_A8_M3')
 elif env['board'] == 'nrf52840_dk':
     env.Append(CPPDEFINES=['NRF52840_DK', 'NRF52840_XXAA', 'BOARD_PCA10056'])
+
 elif env['board'] == 'samr21_xpro':
     env.Append(CPPDEFINES='SAMR21_XPRO')
 else:
     print("Unsupported board: {}".format(env['board']))
     Exit(-1)
+
+# perf3: solar-panel emulation build variant.
+#   scons board=nrf52840_dk toolchain=armgcc perf3_host_voltage=1 oos_openwsn
+# Placed AFTER the board if/elif chain -- inserting inside it silently breaks
+# the dispatch (the nrf52840_dk branch falls through to "Unsupported board").
+# Off unless explicitly requested, so the real-light firmware is unchanged.
+_perf3_hv = ARGUMENTS.get('perf3_host_voltage', '0')
+if _perf3_hv not in ('0', '', None):
+    env.Append(CPPDEFINES='PERF3_HOST_VOLTAGE=%s' % _perf3_hv)
+    print('[perf3] requested; CPPDEFINES=%r' % (env['CPPDEFINES'],))
 
 # check which modules we have to include in the build
 if 'coap' in env['modules'].split(','):

@@ -1,4 +1,13 @@
 #include "opendefs.h"
+// perf3 2026-10-05 READ-ONLY, no behaviour change.  schedule_getOkToSend() is the
+// gate that decides whether the MAC may take a queued packet in this slot:
+// dedicated cells always pass, shared cells must win a backoff draw.  Counting
+// both answers decides whether a stuck packet is blocked by the gate or simply
+// never offered to it -- the last open link in the freeze chain (appendix U).
+volatile uint32_t perf3_okToSendTrue = 0;
+volatile uint32_t perf3_okToSendFalse = 0;
+volatile uint32_t perf3_okToSendSharedBlocked = 0;
+
 #include "schedule.h"
 #include "openserial.h"
 #include "openrandom.h"
@@ -665,6 +674,231 @@ uint8_t schedule_getNumberOfFreeEntries() {
     return counter;
 }
 
+// perf3 2026-10-04 -- READ-ONLY OBSERVATION, no behaviour change.
+//
+// getNumberOfNegotiatedCells() answers "how many dedicated TX cells do I have
+// negotiated with <neighbor>" -- a question about the SCHEDULE TABLE.  The
+// freeze (FREEZE_20261003.md appendix H/I) needs a different question: how many
+// of those cells the stack actually SCHEDULED in the current slotframe.  A cell
+// can sit in scheduleBuf and never be reached if the neighbour was cleared,
+// if 6P renegotiation is in flight, or if the shared-cell backoff skipped it.
+// This function is the counter for that; it only reads scheduleBuf.
+uint8_t schedule_getNumberOfScheduledTxCellsLastSf(open_addr_t *neighbor) {
+    uint8_t i;
+    uint8_t counter = 0;
+
+    INTERRUPT_DECLARATION();
+    DISABLE_INTERRUPTS();
+
+    for (i = 0; i < MAXACTIVESLOTS; i++) {
+        if (schedule_vars.scheduleBuf[i].type == CELLTYPE_TX &&
+            schedule_vars.scheduleBuf[i].neighbor.type == ADDR_64B &&
+            packetfunctions_sameAddress(neighbor, &schedule_vars.scheduleBuf[i].neighbor) == TRUE) {
+            counter++;
+        }
+    }
+
+    ENABLE_INTERRUPTS();
+    return counter;
+}
+
+// perf3 2026-10-04 -- READ-ONLY.  Counts how many dedicated cells the given
+// neighbour HAS, regardless of shared/dedicated, so the P3 line can report
+// "negotiated vs actually usable" side by side.  See
+// FREEZE_20261003.md appendix I: the 6P-clear timeout path
+// (sixtop.c:901) removes cells WITHOUT a response from the peer, after which
+// every packet is shed by d_nocell in uinject.c:273.
+uint8_t schedule_getNumberOfTxCellsAnyShared(open_addr_t *neighbor) {
+    uint8_t i;
+    uint8_t counter = 0;
+
+    INTERRUPT_DECLARATION();
+    DISABLE_INTERRUPTS();
+
+    for (i = 0; i < MAXACTIVESLOTS; i++) {
+        if (schedule_vars.scheduleBuf[i].type == CELLTYPE_TX &&
+            schedule_vars.scheduleBuf[i].neighbor.type == ADDR_64B &&
+            packetfunctions_sameAddress(neighbor, &schedule_vars.scheduleBuf[i].neighbor) == TRUE) {
+            counter++;
+        }
+    }
+
+    ENABLE_INTERRUPTS();
+    return counter;
+}
+
+// perf3 2026-10-05 -- READ-ONLY OBSERVATION, no behaviour change.
+//
+// The freeze (FREEZE_20261003.md appendix L) starts with
+// schedule_hasNegotiatedCellToNeighbor(parent, CELLTYPE_TX) returning FALSE
+// about half the time, while the same predicate evaluated by
+// schedule_getNumberOfNegotiatedCells() returns 1 at P3-sampling instants.
+// Both use the identical condition, so the cell is present at some moments and
+// absent at others.  This reports WHERE it lives in scheduleBuf, so a
+// disappearing cell can be told apart from "present but at another slot".
+// Pure read; counts TX cells for <neighbor> regardless of shared/dedicated.
+// perf3 2026-10-05 -- READ-ONLY, no behaviour change.
+//
+// Same counts, but over EVERY TX cell in scheduleBuf instead of only the ones
+// belonging to <neighbor>.  Needed because a DAG root has no preferred parent
+// (parent7 == -1), so the neighbor-scoped variant reports 0 for it -- and I
+// read that 0 as "the root owns no cells at all", which is wrong: the root was
+// forwarding 124 packets (iphc_fwd) at the time.  See
+// FREEZE_20261003.md appendix Q.  Passing neighbor = NULL counts everything.
+// perf3 2026-10-05 READ-ONLY.  RX-side cell counts, which the TX-only counter
+// cannot see.  Needed because msf_rx_cells_used counts cells USED, not cells
+// PRESENT -- so "the root has no RX cell" cannot be concluded from it.
+// minimal = an ANYCAST cell, i.e. the 6TiSCH minimal cell created in msf_init().
+// perf3 2026-10-05 READ-ONLY.  Dumps the first PERF3_DUMP_CELLS active cells so
+// that the two ends of a link can be compared: if the sender's TX cell and the
+// receiver's RX cell do not share (slotOffset, channelOffset) the frames are
+// transmitted on air but can never be demodulated -- which looks exactly like
+// "the sender is broken" from the receiver's side.  Per cell:
+//   [0] slotOffset      [1] channelOffset
+//   [2] packed: type*100 + shared*10 + (isAutoCell ? 1 : 0)
+// An unused entry is reported as slotOffset = 0xFFFF.
+#define PERF3_DUMP_CELLS 6
+void schedule_debugDumpCells(uint16_t *out) {
+    uint8_t i;
+    uint8_t n = 0;
+
+    INTERRUPT_DECLARATION();
+    DISABLE_INTERRUPTS();
+
+    for (i = 0; i < PERF3_DUMP_CELLS * 3; i++) {
+        out[i] = 0xFFFF;
+    }
+
+    for (i = 0; i < MAXACTIVESLOTS && n < PERF3_DUMP_CELLS; i++) {
+        if (schedule_vars.scheduleBuf[i].type == CELLTYPE_OFF) {
+            continue;
+        }
+        out[n * 3 + 0] = schedule_vars.scheduleBuf[i].slotOffset;
+        out[n * 3 + 1] = schedule_vars.scheduleBuf[i].channelOffset;
+        out[n * 3 + 2] = (uint16_t)(schedule_vars.scheduleBuf[i].type * 100
+                                    + (schedule_vars.scheduleBuf[i].shared ? 10 : 0)
+                                    + (schedule_vars.scheduleBuf[i].isAutoCell ? 1 : 0));
+        n++;
+    }
+
+    ENABLE_INTERRUPTS();
+}
+
+uint8_t schedule_debugCountRxCells(uint8_t *out_rx, uint8_t *out_txrx, uint8_t *out_minimal) {
+    uint8_t i;
+    uint8_t rx = 0, txrx = 0, minimal = 0;
+
+    INTERRUPT_DECLARATION();
+    DISABLE_INTERRUPTS();
+
+    for (i = 0; i < MAXACTIVESLOTS; i++) {
+        if (schedule_vars.scheduleBuf[i].type == CELLTYPE_RX) {
+            rx++;
+            if (schedule_vars.scheduleBuf[i].neighbor.type == ADDR_ANYCAST) {
+                minimal++;
+            }
+        } else if (schedule_vars.scheduleBuf[i].type == CELLTYPE_TXRX) {
+            txrx++;
+            if (schedule_vars.scheduleBuf[i].neighbor.type == ADDR_ANYCAST) {
+                minimal++;
+            }
+        }
+    }
+
+    if (out_rx)      { *out_rx = rx; }
+    if (out_txrx)    { *out_txrx = txrx; }
+    if (out_minimal) { *out_minimal = minimal; }
+
+    ENABLE_INTERRUPTS();
+    return rx;
+}
+
+uint8_t schedule_debugCountAllTxCells(uint8_t *out_dedicated,
+                                       uint8_t *out_shared,
+                                       uint8_t *out_auto) {
+    uint8_t i;
+    uint8_t ded = 0;
+    uint8_t shr = 0;
+    uint8_t aut = 0;
+
+    INTERRUPT_DECLARATION();
+    DISABLE_INTERRUPTS();
+
+    if (out_dedicated) { *out_dedicated = 0; }
+    if (out_shared)    { *out_shared = 0; }
+    if (out_auto)      { *out_auto = 0; }
+
+    for (i = 0; i < MAXACTIVESLOTS; i++) {
+        if (schedule_vars.scheduleBuf[i].type == CELLTYPE_TX) {
+            if (schedule_vars.scheduleBuf[i].shared) {
+                shr++;
+            } else {
+                ded++;
+            }
+            if (schedule_vars.scheduleBuf[i].isAutoCell) {
+                aut++;
+            }
+        }
+    }
+
+    if (out_dedicated) { *out_dedicated = ded; }
+    if (out_shared)    { *out_shared = shr; }
+    if (out_auto)      { *out_auto = aut; }
+
+    ENABLE_INTERRUPTS();
+    return (uint8_t)(ded + shr);
+}
+
+uint8_t schedule_debugCountTxCells(open_addr_t *neighbor,
+                                 uint8_t *out_dedicated,
+                                 uint8_t *out_shared,
+                                 uint8_t *out_auto,
+                                 slotOffset_t *out_firstDedicatedSlot) {
+    uint8_t i;
+    uint8_t ded = 0;
+    uint8_t shr = 0;
+    uint8_t aut = 0;
+
+    INTERRUPT_DECLARATION();
+    DISABLE_INTERRUPTS();
+
+    if (out_dedicated)              { *out_dedicated = 0; }
+    if (out_shared)                 { *out_shared = 0; }
+    if (out_auto)                   { *out_auto = 0; }
+    if (out_firstDedicatedSlot)     { *out_firstDedicatedSlot = 0; }
+
+    // COUNT, do not return the first match.  The previous version of this
+    // helper returned the first TX cell and I read "shared" off it and
+    // concluded the cell had been downgraded -- but getNumberOfNegotiatedCells
+    // reported a dedicated cell at the same instant, i.e. the table holds more
+    // than one entry.  A "first match" probe cannot support a statement about
+    // the whole set.  Measured 2026-10-05.
+    for (i = 0; i < MAXACTIVESLOTS; i++) {
+        if (schedule_vars.scheduleBuf[i].type == CELLTYPE_TX &&
+            schedule_vars.scheduleBuf[i].neighbor.type == ADDR_64B &&
+            packetfunctions_sameAddress(neighbor, &schedule_vars.scheduleBuf[i].neighbor) == TRUE) {
+            if (schedule_vars.scheduleBuf[i].shared) {
+                shr++;
+            } else {
+                if (ded == 0 && out_firstDedicatedSlot) {
+                    *out_firstDedicatedSlot = schedule_vars.scheduleBuf[i].slotOffset;
+                }
+                ded++;
+            }
+            if (schedule_vars.scheduleBuf[i].isAutoCell) {
+                aut++;
+            }
+        }
+    }
+
+    if (out_dedicated)  { *out_dedicated = ded; }
+    if (out_shared)     { *out_shared = shr; }
+    if (out_auto)       { *out_auto = aut; }
+
+    ENABLE_INTERRUPTS();
+    return (uint8_t)(ded + shr);
+}
+
 uint8_t schedule_getNumberOfNegotiatedCells(open_addr_t *neighbor, cellType_t cell_type) {
     uint8_t i;
     uint8_t j;
@@ -1085,6 +1319,7 @@ bool schedule_getOkToSend(void) {
     if (schedule_vars.currentScheduleEntry->shared == FALSE) {
         // non-shared slot: backoff does not apply
 
+        perf3_okToSendTrue++;
         returnVal = TRUE;
     } else {
         // shared slot: check backoff before answering
@@ -1097,8 +1332,10 @@ bool schedule_getOkToSend(void) {
 
             // only return TRUE if backoff hit 0
             if (schedule_vars.backoff == 0) {
+                perf3_okToSendTrue++;
                 returnVal = TRUE;
             } else {
+                perf3_okToSendSharedBlocked++;   /* perf3: minimal cell lost the backoff draw */
                 returnVal = FALSE;
             }
         } else {
@@ -1106,6 +1343,11 @@ bool schedule_getOkToSend(void) {
             neighbors_decreaseBackoff(&schedule_vars.currentScheduleEntry->neighbor);
 
             returnVal = neighbors_backoffHitZero(&schedule_vars.currentScheduleEntry->neighbor);
+            if (returnVal) {
+                perf3_okToSendTrue++;
+            } else {
+                perf3_okToSendSharedBlocked++;
+            }
         }
     }
 

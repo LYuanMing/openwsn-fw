@@ -41,6 +41,10 @@ void energyMeasurementInit(void);
 uint16_t rpl_energy_penalty(void);
 void update_throttle_factor(void);
 
+#if PERF3_HOST_VOLTAGE
+void ea_set_voltage_mv(uint16_t mv);
+#endif
+
 #ifdef __cplusplus
 }
 #endif

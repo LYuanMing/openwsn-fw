@@ -1,4 +1,25 @@
 #include "IEEE802154E.h"
+// perf3 2026-10-05 READ-ONLY counters: how many slots were actually activated,
+// and how many of those carried a TX/TXRX cell.  Compared against
+// schedule_debugCountAllTxCells() (cells in the table) this answers appendix
+// D's open question -- negotiated vs actually scheduled -- and it is the last
+// unmeasured link in the freeze chain of appendix R.
+// perf3 2026-10-05 READ-ONLY: number of sync acks (= EB receptions that reset
+// deSyncTimeout), the only thing keeping the node from declaring itself
+// desynchronized at IEEE802154E.c:951.  Monotonic 32-bit; the stack's own
+// ieee154e_stats.numSyncAck is only uint8_t and wraps every 256 EBs.
+// perf3 2026-10-05 READ-ONLY: how often the OkToSend gate opened on a
+// unicast cell, and how often a packet actually came out of it.
+// perf3 2026-10-05 READ-ONLY: send-done notifications leaving the MAC.
+volatile uint32_t perf3_notifSendDoneCalls = 0;
+volatile uint32_t perf3_txDoneOk = 0;
+volatile uint32_t perf3_txDoneFail = 0;
+volatile uint32_t perf3_unicastOffered = 0;
+volatile uint32_t perf3_unicastFetched = 0;
+volatile uint32_t perf3_syncAckCount = 0;
+volatile uint32_t perf3_activatedSlots = 0;
+volatile uint32_t perf3_activatedTxSlots = 0;
+
 #include "IEEE802154.h"
 #include "IEEE802154_security.h"
 #include "adaptive_sync.h"
@@ -975,6 +996,20 @@ port_INLINE void activity_ti1ORri1(void) {
   if (ieee154e_vars.slotOffset == ieee154e_vars.nextActiveSlotOffset) {
     // this is the next active slot
 
+    // perf3 2026-10-05 READ-ONLY, no behaviour change.  This branch is the
+    // exact place where a cell stops being "negotiated" and becomes "actually
+    // scheduled": a cell that sits in scheduleBuf but is never reached here
+    // can never carry a packet (appendix E: the packet is only taken out
+    // inside an activated TX slot).  Count how many slots actually get here,
+    // and how many of them were TX cells, so it can be compared against the
+    // number of negotiated cells that schedule_debugCountAllTxCells() reports.
+    // See FREEZE_20261003.md appendix R for the minimal reproduction this
+    // explains.
+    perf3_activatedSlots++;
+    if (schedule_getType() == CELLTYPE_TX || schedule_getType() == CELLTYPE_TXRX) {
+      perf3_activatedTxSlots++;
+    }
+
     // advance the schedule
     schedule_advanceSlot();
 
@@ -1081,6 +1116,14 @@ port_INLINE void activity_ti1ORri1(void) {
       if (packetfunctions_isBroadcastMulticast(&neighbor) == FALSE) {
         // look for a unicast packet to send
         ieee154e_vars.dataToSend = openqueue_macGetUnicastPacket(&neighbor);
+        // perf3 2026-10-05 READ-ONLY: the gate opened but did a packet actually
+        // come out?  okToSend==TRUE with fetch==0 means the neighbour of the
+        // current cell does not match the queued packet's next hop, i.e. the
+        // packet is never even offered to a cell.  See appendix U.
+        perf3_unicastOffered++;
+        if (ieee154e_vars.dataToSend != NULL) {
+          perf3_unicastFetched++;
+        }
 
         if (ieee154e_vars.dataToSend == NULL) {
           ieee154e_vars.dataToSend = openqueue_macGetKaPacket(&neighbor);
@@ -1409,6 +1452,12 @@ port_INLINE void activity_ti5(PORT_TIMER_WIDTH capturedTime) {
   } else {
     // indicate succesful Tx to schedule to keep statistics
     schedule_indicateTx(&ieee154e_vars.asn, TRUE);
+    // perf3 2026-10-05 READ-ONLY: split send-done by outcome.  E_SUCCESS here
+    // means the MAC handed the frame to the radio and (unlike activity_tie5) did
+    // not see a link failure -- it is NOT proof the peer decoded it.  Comparing
+    // this against what the peer actually received separates "never left the
+    // node" from "left but not demodulated".
+    perf3_txDoneOk++;
     // indicate to upper later the packet was sent successfully
     notif_sendDone(ieee154e_vars.dataToSend, E_SUCCESS);
     // reset local variable
@@ -1483,6 +1532,9 @@ port_INLINE void activity_tie5(void) {
   schedule_indicateTx(&ieee154e_vars.asn, FALSE);
 
   // decrement transmits left counter
+  // perf3 2026-10-05 READ-ONLY: outcome counter for the failure path.
+  perf3_txDoneFail++;
+
   ieee154e_vars.dataToSend->l2_retriesLeft--;
 
   if (ieee154e_vars.dataToSend->l2_retriesLeft == 0) {
@@ -2334,6 +2386,68 @@ port_INLINE uint16_t ieee154e_getTimeCorrection(void) {
   return returnVal;
 }
 
+
+// perf3 2026-10-05 READ-ONLY accessor for appendix T.  Returns the stack's own
+// desync count and active-slot count; neither is modified.
+// perf3 2026-10-05 READ-ONLY accessor; defined in schedule.c.
+extern volatile uint32_t perf3_okToSendTrue;
+extern volatile uint32_t perf3_okToSendSharedBlocked;
+
+// perf3 2026-10-05 READ-ONLY: state of the packet the MAC is holding.
+// l2_numTxAttempts is bumped at IEEE802154E.c:1166 on every transmit attempt and
+// l2_retriesLeft is decremented in endSlot() ONLY when dataToSend != NULL, so:
+//   attempts == 0        -> the packet was fetched but never even tried to send
+//   retriesLeft == 0     -> the retry budget is gone
+//   both 0 with a NULL packet -> nothing is queued at all
+// Together with offered/fetched this pins the freeze to one of three places.
+void perf3_getPendingPacketState(uint8_t *out_havePacket,
+                                 uint8_t *out_numTxAttempts,
+                                 uint8_t *out_retriesLeft) {
+  if (ieee154e_vars.dataToSend == NULL) {
+    if (out_havePacket)       { *out_havePacket = 0; }
+    if (out_numTxAttempts)    { *out_numTxAttempts = 0; }
+    if (out_retriesLeft)      { *out_retriesLeft = 0; }
+    return;
+  }
+  if (out_havePacket)     { *out_havePacket = 1; }
+  if (out_numTxAttempts)  { *out_numTxAttempts = ieee154e_vars.dataToSend->l2_numTxAttempts; }
+  if (out_retriesLeft)    { *out_retriesLeft = ieee154e_vars.dataToSend->l2_retriesLeft; }
+}
+
+void perf3_getFetchCounters(uint32_t *offered, uint32_t *fetched,
+                            uint32_t *okTrue, uint32_t *okBlocked) {
+  if (offered)   { *offered = perf3_unicastOffered; }
+  if (fetched)   { *fetched = perf3_unicastFetched; }
+  if (okTrue)    { *okTrue = perf3_okToSendTrue; }
+  if (okBlocked) { *okBlocked = perf3_okToSendSharedBlocked; }
+}
+
+// perf3 2026-10-05 READ-ONLY.  calculateFrequency() is
+//   11 + chTemplate[(asnOffset + channelOffset) % NUM_CHANNELS]
+// so two boards agree on a link only if they share asnOffset AND chTemplate --
+// matching channelOffset is NOT sufficient.  asnOffset advances every slotframe
+// (IEEE802154E.c:2355) and is re-inferred from each received EB (:914-920), so
+// any divergence makes the two ends hop to different frequencies and the link
+// silently stops working while both sides still believe they are on it.
+// The template checksum makes a mismatch visible in one P3 field.
+void ieee154e_getHopInfo(uint8_t *out_asnOffset, uint8_t *out_singleChannel,
+                         uint8_t *out_freq, uint16_t *out_tmplSum) {
+  uint8_t i;
+  uint16_t sum = 0;
+  if (out_asnOffset)    { *out_asnOffset = ieee154e_vars.asnOffset; }
+  if (out_singleChannel){ *out_singleChannel = ieee154e_vars.singleChannel; }
+  if (out_freq)         { *out_freq = ieee154e_vars.freq; }
+  for (i = 0; i < NUM_CHANNELS; i++) {
+    sum = (uint16_t)(sum + (uint16_t)(ieee154e_vars.chTemplate[i] + 1));
+  }
+  if (out_tmplSum)      { *out_tmplSum = sum; }
+}
+
+void ieee154e_getSyncStats(uint8_t *out_numDeSync, uint32_t *out_numActiveSlots) {
+  if (out_numDeSync)       { *out_numDeSync = ieee154e_stats.numDeSync; }
+  if (out_numActiveSlots) { *out_numActiveSlots = ieee154e_stats.numActiveSlots; }
+}
+
 void ieee154e_getTicsInfo(uint32_t *numTicsOn, uint32_t *numTicsTotal) {
   *numTicsOn    = (uint32_t)(ieee154e_stats.numTicsOn);
   *numTicsTotal = (uint32_t)(ieee154e_stats.numTicsTotal);
@@ -2639,6 +2753,11 @@ void synchronizePacket(PORT_TIMER_WIDTH timeReceived) {
 #endif
   // reset the de-synchronization timeout
   ieee154e_vars.deSyncTimeout = DESYNCTIMEOUT;
+    // perf3 2026-10-05 READ-ONLY: this is the only thing that refills
+    // deSyncTimeout, i.e. the only thing preventing the desync at
+    // IEEE802154E.c:951.  Counted to test appendix T's root cause (stall =
+    // EB starvation).  The stack's own numSyncAck is uint8_t and wraps.
+    perf3_syncAckCount++;   // in synchronizePacket()
 
   // log a large timeCorrection
   if (ieee154e_vars.isSync == TRUE &&
@@ -2675,6 +2794,11 @@ void synchronizeAck(PORT_SIGNED_INT_WIDTH timeCorrection) {
 
   // reset the de-synchronization timeout
   ieee154e_vars.deSyncTimeout = DESYNCTIMEOUT;
+    // perf3 2026-10-05 READ-ONLY: this is the only thing that refills   // in synchronizeAck()
+    // deSyncTimeout, i.e. the only thing preventing the desync at
+    // IEEE802154E.c:951.  Counted to test appendix T's root cause (stall =
+    // EB starvation).  The stack's own numSyncAck is uint8_t and wraps.
+    perf3_syncAckCount++;
 
 #if OPENWSN_ADAPTIVE_SYNC_C
   // indicate time correction to adaptive sync module
@@ -2711,6 +2835,11 @@ void changeIsSync(bool newIsSync) {
 //======= notifying upper layer
 
 void notif_sendDone(OpenQueueEntry_t *packetSent, owerror_t error) {
+  // perf3 2026-10-05 READ-ONLY: how many times the MAC handed a send-done back to
+  // the stack.  uinject counts the other end of the same edge (n_sent_done), so
+  // notifSendDoneCalls >> n_sent_done localises the break to whatever sits
+  // between them (the RES/sixtop hop chain).
+  perf3_notifSendDoneCalls++;
   // record the outcome of the transmission attempt
   packetSent->l2_sendDoneError = error;
   // record the current ASN
