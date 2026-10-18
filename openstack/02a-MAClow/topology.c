@@ -108,19 +108,19 @@ bool topology_isAcceptablePacket(ieee802154_header_iht* ieee802514_header) {
          break;
       // leaf 1 (LEAF1_ON)
       case 0xe4:
-         if (ieee802514_header->src.addr_64b[7] == 0x8c) { returnVal = TRUE; }
+         if (ieee802514_header->src.addr_64b[7] == 0xd9) { returnVal = TRUE; }
          break;
       // leaf 2 (LEAF2_ON)
       case 0xcd:
-         if (ieee802514_header->src.addr_64b[7] == 0x8c) { returnVal = TRUE; }
+         if (ieee802514_header->src.addr_64b[7] == 0xd9) { returnVal = TRUE; }
          break;
       // leaf 3 (LEAF3_ON)
       case 0x18:
-         if (ieee802514_header->src.addr_64b[7] == 0x8c) { returnVal = TRUE; }
+         if (ieee802514_header->src.addr_64b[7] == 0xd9) { returnVal = TRUE; }
          break;
       // leaf 4 (LEAF4_ON)
       case 0xba:
-         if (ieee802514_header->src.addr_64b[7] == 0x8c) { returnVal = TRUE; }
+         if (ieee802514_header->src.addr_64b[7] == 0xd9) { returnVal = TRUE; }
          break;
       // leaf 5 (LEAF5_ON)
       case 0x38:
@@ -128,7 +128,7 @@ bool topology_isAcceptablePacket(ieee802154_header_iht* ieee802514_header) {
          break;
       // leaf 5 replacement (LEAF5_ON; replaced 0x38/1050292671 2026-09-14)
       case 0xd9:
-         if (ieee802514_header->src.addr_64b[7] == 0x8c) { returnVal = TRUE; }
+         returnVal = FALSE;
          break;
       default:
          // any future / unknown board: behave like root/DUT (don't break the network)

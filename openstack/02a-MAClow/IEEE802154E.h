@@ -44,7 +44,7 @@ static const uint8_t ebIEsBytestream[] = {
 #define TX_POWER                    31  // 1=-25dBm, 31=0dBm (max value)
 #define RESYNCHRONIZATIONGUARD       5  // in 32kHz ticks. min distance to the end of the slot to successfully synchronize
 #ifndef EB_PORTION
-#define EB_PORTION                  3 // set EB on minimal cell for 1/EB_PORTION portion
+#define EB_PORTION                  30 // set EB on minimal cell for 1/EB_PORTION portion
 #endif
 // Per-build crystal-drift compensation. The DK board's 32.768 kHz sleep
 // crystal differs from the bare nrf52840 module crystal used by the relay/
@@ -52,7 +52,7 @@ static const uint8_t ebIEsBytestream[] = {
 // this; root and DUT (same crystal) MUST NOT enable it (the +1/-1 tick
 // re-anchor is unnecessary and degrades sync quality). Default 0 (disabled).
 #ifndef XTAL_COMPENSATION
-#define XTAL_COMPENSATION           0
+#define XTAL_COMPENSATION           1
 #endif
 // Per-build leaf-on gating (Round 6, 2026-09-11). Topology.c reads these to
 // decide which of the 5 leaf boards (EUI64[7] = 0xe4/0xcd/0x18/0xba/0x38)

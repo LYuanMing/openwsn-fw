@@ -296,7 +296,23 @@
  *
  */
 #ifndef OPENWSN_FORCETOPOLOGY_C
-#define OPENWSN_FORCETOPOLOGY_C (1)
+#define OPENWSN_FORCETOPOLOGY_C (0)
+#endif
+
+/**
+ * \def OPENWSN_RXDIAG_C
+ *
+ * Diagnostic-only (2026-10-04).  Split the received-frame counter by whether the
+ * frame arrived in the shared cell (slotOffset == 0) or a dedicated one, so that
+ * "is there an RX path that the 1/8 energy throttle does not gate?" can be
+ * answered by reading RAM over J-Link (tools/dump_neighbors.py) after a run.
+ *
+ * Kept OFF by default so the production firmware stays byte-identical, and kept
+ * as globals rather than new neighborRow_t fields so the neighbours table layout
+ * (and therefore the .map offsets used by dump_neighbors.py) is unchanged.
+ */
+#ifndef OPENWSN_RXDIAG_C
+#define OPENWSN_RXDIAG_C (1)
 #endif
 
 
@@ -379,7 +395,7 @@
  *
  */
 #ifndef SLOPSKIP
-#define SLOTSKIP (1)
+#define SLOTSKIP (0)
 #endif
 
 
@@ -390,7 +406,7 @@
  *
  */
 #ifndef DAGROOT
-#define DAGROOT (0)
+#define DAGROOT (1)
 #endif
 
 /**

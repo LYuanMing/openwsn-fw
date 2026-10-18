@@ -11,6 +11,25 @@
 #if ENERGY_THROTTLE
 #include "energy_aware.h"
 #endif
+
+// ===== RX 路径诊断（2026-10-04，默认关闭）=====
+// 目的：判定 2200 mV（tf=3）时 DUT 到底从哪条路径听到 child。
+// 背景：IEEE802154E.c:1015 的节流判定是 `if (slotOffset != 0)`，即**只豁免
+// 共享 cell**；而 neighbors_removeOld() 的删除线是 2×DESYNCTIMEOUT ≈ 70 s，
+// RPL DAO 周期 60 s（余量仅 1.17×）。若 child 只靠专用 cell 被听到，tf=3 会把
+// 收帧机会压到 1/8、所有 child 都该被除名 —— 但实测仍守住 3–5 个。
+// 说明存在一条不被 1/8 门控的收帧路径，最可能就是共享 cell。
+// 本计数器按 slotOffset 是否为 0 分开累计收到的帧数，配合 J-Link 读 RAM
+// （tools/dump_neighbors.py）即可给出直接证据。
+// 用全局变量而不是加进 neighborRow_t，是为了**不改动结构体布局** ——
+// 这样生产固件的 .map / 行偏移保持有效，同一个 dump 工具两套固件都能用。
+#ifdef OPENWSN_RXDIAG_C
+extern ieee154e_vars_t ieee154e_vars;
+volatile uint32_t rxdiag_shared;    // 落在共享 cell（slotOffset == 0）的收帧数
+volatile uint32_t rxdiag_dedicated; // 落在专用 cell（slotOffset != 0）的收帧数
+volatile uint32_t rxdiag_total;
+#endif
+
 //=========================== variables =======================================
 
 static neighbors_vars_t neighbors_vars;
@@ -310,6 +329,19 @@ void neighbors_indicateRx(open_addr_t *l2_src,
                           bool insecure) {
     uint8_t i;
     bool newNeighbor;
+
+#ifdef OPENWSN_RXDIAG_C
+    // RX 路径诊断：按当前 slot 是否为共享 cell 分开累计（见文件头的说明）。
+    // 用 slotOffset 而不是 schedule_getType()，因为节流判定的就是同一个量
+    // （IEEE802154E.c:1015 的 `if (ieee154e_vars.slotOffset != 0)`），
+    // 这样"收到的帧属于哪条路径"与"节流放行了哪条路径"是同一个判据。
+    rxdiag_total++;
+    if (ieee154e_vars.slotOffset == 0) {
+        rxdiag_shared++;
+    } else {
+        rxdiag_dedicated++;
+    }
+#endif
 
     // update existing neighbor
     newNeighbor = TRUE;
