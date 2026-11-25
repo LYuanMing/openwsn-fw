@@ -17,6 +17,21 @@
 //=========================== definition ======================================
 
 #define DIO_PORTION 3
+
+// Set by icmpv6rpl_triggerDIO(), cleared by the DIO task: send the next DIO
+// regardless of the 1/DIO_PORTION random gate.
+static bool icmpv6rpl_dioForced;
+
+// A DIO is a broadcast: no ACK, no retransmission, and every node in the cell
+// shares one slot per slotframe, so a single announcement is easily lost.  After
+// a working point change announce this many times, one per DIO timer tick.
+#define DIO_BURST 5
+static uint8_t icmpv6rpl_dioBurst;
+static volatile uint8_t icmpv6rpl_pendingBurst;   // copies the next announce sends
+
+// Implemented by openapps/uinject (this build always has it); declared weak so a
+// configuration without that app still links.  Guarded before every call.
+__attribute__ ((weak)) void uinject_onParentChanged(void);
 #define DAO_PORTION 5
 
 //=========================== variables =======================================
@@ -272,7 +287,6 @@ void icmpv6rpl_receive(OpenQueueEntry_t *msg) {
             }
             // update routing info for that neighbor
             icmpv6rpl_indicateRxDIO(msg);
-
             break;
 
         case IANA_ICMPv6_RPL_DAO:
@@ -453,6 +467,14 @@ void icmpv6rpl_updateMyDAGrankAndParentSelection(void) {
 
     if (foundBetterParent) {
         openserial_printf("switch to %d, rank: %d, \r\n", icmpv6rpl_vars.ParentIndex, icmpv6rpl_vars.myDAGrank);
+        // A new parent has no negotiated TX cell yet, so the uplink (and with it
+        // the uinject report the host graphs) stalls until MSF runs its 30 s
+        // housekeeping task.  Kick it right away, and ask uinject to report as
+        // soon as the cell exists.
+        scheduler_push_task(msf_timer_housekeeping_task, TASKPRIO_MSF);
+        if (uinject_onParentChanged != NULL) {
+            uinject_onParentChanged();
+        }
         icmpv6rpl_vars.haveParent = TRUE;
         if (!prevHadParent) {
             // in case preParent is killed before calling this function, clear the preferredParent flag
@@ -653,13 +675,46 @@ void icmpv6rpl_timer_DIO_cb(opentimers_id_t id) {
 \note This function is executed in task context, called by the scheduler.
 */
 void icmpv6rpl_timer_DIO_task(void) {
+    bool forced;
+
+    forced = icmpv6rpl_dioForced;
+    icmpv6rpl_dioForced = FALSE;
+
+    // still announcing a rank change: send one now
+    if (icmpv6rpl_dioBurst > 0) {
+        icmpv6rpl_dioBurst--;
+        sendDIO();
+        return;
+    }
+
 #ifdef  FIXED_DIO_PERIOD
+    (void)forced;
     sendDIO();
 #else
-    if (openrandom_get16b() < (0xffff / DIO_PORTION)) {
+    if (forced || openrandom_get16b() < (0xffff / DIO_PORTION)) {
         sendDIO();
     }
 #endif
+}
+
+// Recompute my rank and announce it.  A node's own rank only moves when it
+// processes a DIO, so sending one straight after the working point changed
+// would advertise the OLD rank; the update has to run first.
+static void icmpv6rpl_announceRankTask(void) {
+    icmpv6rpl_updateMyDAGrankAndParentSelection();
+    openserial_printf("EA announce rank=%d burst=%d\r\n",
+                      icmpv6rpl_vars.myDAGrank, (int)icmpv6rpl_pendingBurst);
+    icmpv6rpl_dioBurst = (icmpv6rpl_pendingBurst == 0) ? 1 : icmpv6rpl_pendingBurst;
+    icmpv6rpl_timer_DIO_task();
+}
+
+// Ask for an immediate rank announcement.  Called from the energy-aware layer
+// when the working point changes (update_throttle_factor()): my rank is about to
+// move, and my children can only re-rank me once they hear a DIO.  Safe from an
+// ISR - scheduler_push_task() masks interrupts and only queues the task.
+void icmpv6rpl_triggerDIO(uint8_t burst) {
+    icmpv6rpl_pendingBurst = burst;
+    scheduler_push_task(icmpv6rpl_announceRankTask, TASKPRIO_RPL);
 }
 
 /**

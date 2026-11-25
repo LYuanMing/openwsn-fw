@@ -308,6 +308,25 @@ uint8_t openqueue_getNum6PResp() {
     return num6Presponse;
 }
 
+void openqueue_removeAll6PResponses(void) {
+
+    uint8_t i;
+
+    INTERRUPT_DECLARATION();
+    DISABLE_INTERRUPTS();
+
+    for (i = 0; i < QUEUELENGTH; i++) {
+        if (
+                openqueue_vars.queue[i].owner == COMPONENT_SIXTOP_TO_IEEE802154E &&
+                openqueue_vars.queue[i].creator == COMPONENT_SIXTOP_RES &&
+                openqueue_vars.queue[i].l2_sixtop_messageType == SIXTOP_CELL_RESPONSE
+                ) {
+            openqueue_reset_entry(&(openqueue_vars.queue[i]));
+        }
+    }
+    ENABLE_INTERRUPTS();
+}
+
 void openqueue_remove6PrequestToNeighbor(open_addr_t *neighbor) {
 
     uint8_t i;
@@ -378,6 +397,31 @@ OpenQueueEntry_t* openqueue_macGetKaPacket(open_addr_t* toNeighbor) {
             toNeighbor->type == ADDR_64B &&
             packetfunctions_sameAddress(toNeighbor, &openqueue_vars.queue[i].l2_nextORpreviousHop)
                 ) {
+            ENABLE_INTERRUPTS();
+            return &openqueue_vars.queue[i];
+        }
+    }
+    ENABLE_INTERRUPTS();
+    return NULL;
+}
+
+/**
+\Brief get a queued application broadcast (neither DIO nor EB/KA/6P) for the
+       minimal shared cell.
+
+The DAG root can only originate ff02::1a broadcasts (iphc.c:76-80) and the MAC
+layer's shared-cell branch used to look at DIO/EB only, so an application
+broadcast (the 'W' downlink voltage command) sat in the queue forever.
+*/
+OpenQueueEntry_t* openqueue_macGetAppBroadcastPacket() {
+    uint8_t i;
+    INTERRUPT_DECLARATION();
+    DISABLE_INTERRUPTS();
+    for (i = 0; i < QUEUELENGTH; i++) {
+        if (openqueue_vars.queue[i].owner == COMPONENT_SIXTOP_TO_IEEE802154E &&
+            openqueue_vars.queue[i].creator != COMPONENT_ICMPv6RPL &&
+            openqueue_vars.queue[i].creator != COMPONENT_SIXTOP &&
+            packetfunctions_isBroadcastMulticast(&(openqueue_vars.queue[i].l2_nextORpreviousHop))) {
             ENABLE_INTERRUPTS();
             return &openqueue_vars.queue[i];
         }

@@ -242,9 +242,14 @@ void sock_receive_internal(void) {
     current = udp_socket_list;
 
     while (current != NULL) {
+        // Multicast/broadcast must be delivered too: the DAG root can only
+        // originate ff02::1a (openstack/03a-IPHC/iphc.c:76-80), so the downlink
+        // voltage command arrives addressed to a multicast group, never to
+        // this mote's unicast address.
         if (current->gen_sock.local.port == pkt->l4_destination_port &&
             current->async_cb != NULL &&
-            idmanager_isMyAddress(&pkt->l3_destinationAdd))
+            (idmanager_isMyAddress(&pkt->l3_destinationAdd) ||
+             packetfunctions_isBroadcastMulticast(&pkt->l3_destinationAdd)))
         {
 
             current->txrx = pkt;

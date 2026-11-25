@@ -21,16 +21,18 @@ volatile int16_t adc_buffer;
 void adc_init(void) {
     // 1. 配置输入引脚 (P0.02 = AIN0)
     NRF_SAADC->CH[0].PSELP = SAADC_CH_PSELP_PSELP_AnalogInput0; 
-    
-    // 2. 配置通道 0 的电气特性
-    NRF_SAADC->CH[0].CONFIG = (SAADC_CH_CONFIG_GAIN_Gain1_6    << SAADC_CH_CONFIG_GAIN_Pos)  |
-                              (SAADC_CH_CONFIG_REFSEL_Internal << SAADC_CH_CONFIG_REFSEL_Pos)|
-                              (SAADC_CH_CONFIG_TACQ_10us       << SAADC_CH_CONFIG_TACQ_Pos)  |
-                              (SAADC_CH_CONFIG_MODE_SE         << SAADC_CH_CONFIG_MODE_Pos)  |
-                              (SAADC_CH_CONFIG_BURST_Disabled  << SAADC_CH_CONFIG_BURST_Pos);
+    NRF_SAADC->CH[0].PSELN = SAADC_CH_PSELN_PSELN_NC << SAADC_CH_PSELN_PSELN_Pos;
 
-    // 3. 设置全局分辨率 (10位)
-    NRF_SAADC->RESOLUTION = SAADC_RESOLUTION_VAL_10bit;
+    // 2. 配置通道 0 的电气特性
+    NRF_SAADC->CH[0].CONFIG =   (SAADC_CH_CONFIG_GAIN_Gain1_6    << SAADC_CH_CONFIG_GAIN_Pos)   |
+                                (SAADC_CH_CONFIG_REFSEL_Internal << SAADC_CH_CONFIG_REFSEL_Pos) |
+                                (SAADC_CH_CONFIG_TACQ_40us       << SAADC_CH_CONFIG_TACQ_Pos)   |
+                                (SAADC_CH_CONFIG_MODE_SE         << SAADC_CH_CONFIG_MODE_Pos)   |
+                                (SAADC_CH_CONFIG_BURST_Disabled  << SAADC_CH_CONFIG_BURST_Pos);
+
+
+    // 3. 设置全局分辨率 (12位)
+    NRF_SAADC->RESOLUTION = SAADC_RESOLUTION_VAL_12bit;
 
     // 4. 设置采样率模式为 Task 触发
     NRF_SAADC->SAMPLERATE = (SAADC_SAMPLERATE_MODE_Task << SAADC_SAMPLERATE_MODE_Pos);

@@ -28,10 +28,22 @@
     is in a 6P transcation.
 */
 #define MAX6PRESPONSE             1
+/**
+ A 6P response that cannot be transmitted (no TX cell to the requester) keeps
+ openqueue_getNum6PResp() at MAX6PRESPONSE and therefore silently drops every
+ later 6P request, from every neighbor, for good. The maintenance timer runs
+ once a second; after this many consecutive seconds of saturation the queued
+ 6P responses are freed so the next request can be served.
+*/
+#define SIXTOP_STUCK_RESPONSE_PERIODS  30
 
 //=========================== variables =======================================
 
 sixtop_vars_t sixtop_vars;
+
+// consecutive maintenance ticks (1 s each) during which a 6P response has been
+// stuck in the queue, see SIXTOP_STUCK_RESPONSE_PERIODS
+static uint8_t sixtop_stuckResponsePeriods = 0;
 
 //=========================== prototypes ======================================
 
@@ -625,7 +637,17 @@ owerror_t sixtop_send_internal(
         // the frame source address is not broadcast/multicast
         // no negotiated tx cell to that neighbor
         // no auto tx cell to that neighbor
-
+        // The hashed slot is the only slot this neighbor listens to for unconnected traffic:
+        // every node keeps an auto RX cell at
+        //   SCHEDULE_MINIMAL_6TISCH_ACTIVE_CELLS + moteId % (SLOTFRAME_LENGTH - 1)
+        // (msf_hashFunction_getSlotoffset(), msf.c:516), so a different slot would be a slot
+        // nobody listens on. If the hashed slot is already taken by another cell -- typically a
+        // negotiated RX cell granted to a different child -- this TX cell cannot be created and
+        // the frame cannot be sent at all. Do NOT pretend it was: the packet would stay queued as
+        // COMPONENT_SIXTOP_TO_IEEE802154E forever, openqueue_getNum6PResp() would stay at
+        // MAX6PRESPONSE and sixtop_six2six_notifyReceive() would then silently drop EVERY later
+        // 6P request from EVERY neighbor -- a network-wide permanent deadlock (observed
+        // 2026-11-12: node 0x32's ADD response blocked forever by a stale RX cell on slot 19).
         schedule_addActiveSlot(
                 msf_hashFunction_getSlotoffset(&(msg->l2_nextORpreviousHop)),    // slot offset
                 CELLTYPE_TX,                                                     // type of slot
@@ -634,6 +656,12 @@ owerror_t sixtop_send_internal(
                 msf_hashFunction_getChanneloffset(&(msg->l2_nextORpreviousHop)), // channel offset
                 &(msg->l2_nextORpreviousHop)                                     // neighbor
         );
+        // schedule_addActiveSlot() reports E_SUCCESS even when the cell landed in a backup entry,
+        // and a backup entry never transmits; verify against the schedule itself.
+        if (schedule_hasAutoTxCellToNeighbor(&(msg->l2_nextORpreviousHop)) == FALSE) {
+            msg->owner = COMPONENT_SIXTOP;
+            return E_FAIL;
+        }
     }
     return E_SUCCESS;
 }
@@ -691,6 +719,17 @@ The body of this function executes one of the MAC management task.
 void timer_sixtop_management_fired(void) {
 
     sixtop_vars.mgtTaskCounter = (sixtop_vars.mgtTaskCounter + 1) % MAINTENANCE_PERIOD;
+
+    // watchdog: never let a queue-full condition on 6P responses become permanent
+    if (openqueue_getNum6PResp() >= MAX6PRESPONSE) {
+        sixtop_stuckResponsePeriods++;
+        if (sixtop_stuckResponsePeriods >= SIXTOP_STUCK_RESPONSE_PERIODS) {
+            sixtop_stuckResponsePeriods = 0;
+            openqueue_removeAll6PResponses();
+        }
+    } else {
+        sixtop_stuckResponsePeriods = 0;
+    }
 
     switch (sixtop_vars.mgtTaskCounter) {
         case 0:
@@ -1498,7 +1537,12 @@ void sixtop_six2six_notifyReceive(
         // record this packet as sixtop request message
         response_pkt->l2_sixtop_messageType = SIXTOP_CELL_RESPONSE;
 
-        sixtop_send(response_pkt);
+        if (sixtop_send(response_pkt) == E_FAIL) {
+            // no TX cell to the requester: free it, a response left in the queue would keep
+            // openqueue_getNum6PResp() at MAX6PRESPONSE and block every later 6P request
+            // (see sixtop_send_internal()).
+            openqueue_freePacketBuffer(response_pkt);
+        }
     }
 
     if (type == SIXTOP_CELL_RESPONSE) {

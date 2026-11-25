@@ -40,6 +40,13 @@ void task_energyMeasurement(void);
 void energyMeasurementInit(void);
 uint16_t rpl_energy_penalty(void);
 void update_throttle_factor(void);
+void energy_aware_setVoltage(uint16_t mv);
+// Announce a working-point change at once (debug aid, see energy_aware.c):
+// mode 0 = off (default, the reference behaviour), 1 = burst of DIO_BURST,
+// 2 = a single DIO; tminS = minimum seconds between two forced announcements.
+void energy_aware_setDioMode(uint8_t mode, uint8_t tminS);
+uint8_t energy_aware_getDioMode(void);
+uint8_t energy_aware_getDioTmin(void);
 
 #ifdef __cplusplus
 }

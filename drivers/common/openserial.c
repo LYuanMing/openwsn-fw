@@ -28,6 +28,10 @@
 #include "icmpv6echo.h"
 #include "msf.h"
 #include "debugpins.h"
+#include "energy_aware.h"
+#if defined(NRF52840_DK)
+#include "rtt_console.h"
+#endif
 
 //=========================== variables =======================================
 
@@ -58,6 +62,8 @@ void openserial_debugPrint_timer_cb(opentimers_id_t id);
 void openserial_board_reset_cb(opentimers_id_t id);
 
 // HDLC output
+void outputHdlcByte(uint8_t b);
+
 void outputHdlcOpen(void);
 
 void outputHdlcWrite(uint8_t b);
@@ -200,16 +206,21 @@ owerror_t openserial_printData(uint8_t *buffer, uint8_t length) {
     outputHdlcWrite(asn[2]);
     outputHdlcWrite(asn[3]);
     outputHdlcWrite(asn[4]);
+    // Always forward the buffer. openbridge_receive() relies on this to ship the
+    // whole IPv6 packet to the PC; with the old #if OPENWSN_UTEMPERATURE_C guard
+    // the frame carried only 'D' + addr16(2) + ASN(5) and the payload was lost.
     #if OPENWSN_UTEMPERATURE_C
     for (i = 0; i < length; i++) {
         if (buffer[i] == 'u' && buffer[i+1] == 't') {
             break;
         }
     }
+    #else
+    i = 0;
+    #endif
     for (;i < length; i++) {
         outputHdlcWrite(buffer[i]);
     }
-    #endif
     outputHdlcClose();
 
     // start TX'ing
@@ -598,6 +609,39 @@ owerror_t internal_openserial_print(
 
 //===== command handlers
 
+// Weak default so that projects linking libdrivers without libopenstack
+// (e.g. 02drv_openserial) still link; energy_aware.c provides the strong
+// definition used by the full stack.
+__attribute__((weak)) void energy_aware_setVoltage(uint16_t mv) {
+    (void)mv;
+}
+
+__attribute__((weak)) uint8_t energy_aware_getDioMode(void) {
+    return 0;
+}
+
+__attribute__((weak)) uint8_t energy_aware_getDioTmin(void) {
+    return 0;
+}
+
+// Same idea for the root-side topology snapshot: uinject.c provides the strong
+// definition, and a build without the uinject app simply ignores 'T'.
+__attribute__((weak)) void uinject_requestDump(void) {
+}
+
+// Same for the mesh-wide voltage command: without the uinject app 'W' is a no-op.
+__attribute__((weak)) void uinject_requestSetVoltage(uint8_t eui7, uint16_t mv) {
+    (void)eui7;
+    (void)mv;
+}
+
+// The 'M' default keeps the experiment behaviour (announce on the normal DIO
+// schedule) when this file is linked without the energy-aware layer.
+__attribute__((weak)) void energy_aware_setDioMode(uint8_t mode, uint8_t tminS) {
+    (void)mode;
+    (void)tminS;
+}
+
 // executed in ISR
 void openserial_handleRxFrame() {
     uint8_t cmdByte;
@@ -617,6 +661,50 @@ void openserial_handleRxFrame() {
             break;
         case SERFRAME_PC2MOTE_TRIGGERSERIALECHO:
             openserial_handleEcho(&openserial_vars.inputBuf[1], openserial_vars.inputBufFillLevel - 1);
+            break;
+        case SERFRAME_PC2MOTE_SETVOLTAGE: {
+            // payload: 'V' [mV_hi mV_lo]
+            if (openserial_vars.inputBufFillLevel >= 3) {
+                uint16_t mv;
+                mv = ((uint16_t)openserial_vars.inputBuf[1] << 8) |
+                     ((uint16_t)openserial_vars.inputBuf[2]);
+                energy_aware_setVoltage(mv);
+            }
+            // report the effective value (the setter clamps out-of-range input);
+            // the eui lets the host bind a serial port to a node id
+            openserial_printf("EA voltage=%d mV tf=%d eui=%x\r\n",
+                              (int)energy_vars.voltage_mV,
+                              (int)energy_vars.throttle_factor,
+                              (int)idmanager_getMyID(ADDR_64B)->addr_64b[7]);
+            break;
+        }
+        case SERFRAME_PC2MOTE_SETVOLTAGE_REMOTE:
+            // payload: 'W' <eui7> <mV_hi> <mV_lo>; the root broadcasts it, the
+            // matching leaf applies it and reports back (see uinject.c)
+            if (openserial_vars.inputBufFillLevel >= 4) {
+                uinject_requestSetVoltage(openserial_vars.inputBuf[1],
+                        (uint16_t)(((uint16_t)openserial_vars.inputBuf[2] << 8) |
+                                   (uint16_t)openserial_vars.inputBuf[3]));
+                openserial_printf("EA remote voltage eui=%x mv=%d\r\n",
+                        (int)openserial_vars.inputBuf[1],
+                        (int)(((uint16_t)openserial_vars.inputBuf[2] << 8) |
+                              (uint16_t)openserial_vars.inputBuf[3]));
+            }
+            break;
+        case SERFRAME_PC2MOTE_DUMPTOPO:
+            // payload: 'T'; the dump itself runs in the uinject timer task
+            uinject_requestDump();
+            break;
+        case SERFRAME_PC2MOTE_EADIOMODE:
+            // payload: 'M' <mode> <tmin_s>; a bare 'M' only reports the mode
+            if (openserial_vars.inputBufFillLevel >= 3) {
+                energy_aware_setDioMode(openserial_vars.inputBuf[1],
+                                        openserial_vars.inputBuf[2]);
+            }
+            openserial_printf("EA dio mode=%d tmin=%d eui=%x\r\n",
+                              (int)energy_aware_getDioMode(),
+                              (int)energy_aware_getDioTmin(),
+                              (int)idmanager_getMyID(ADDR_64B)->addr_64b[7]);
             break;
     }
 }
@@ -642,6 +730,24 @@ void openserial_board_reset_cb(opentimers_id_t id) {
 //===== hdlc (output)
 
 /**
+\brief Append one byte to the outgoing HDLC stream.
+
+Every byte the serial port would carry goes through here, so this is the one
+place where the same stream can also be handed to a board-level transport.
+The nRF52840 board mirrors it into its SEGGER-RTT ring
+(bsp/boards/nrf52840_dk/rtt_console.c): the battery-free board has no wired
+UART, and its DAG root still has to deliver the 'D' frames that carry every
+child's uinject report.  Called with interrupts disabled (see the callers), so
+the RTT write needs no locking of its own.
+*/
+port_INLINE void outputHdlcByte(uint8_t b) {
+    openserial_vars.outputBuf[OUTPUT_BUFFER_MASK & (openserial_vars.outputBufIdxW++)] = b;
+#if defined(NRF52840_DK)
+    rtt_console_writeByte(b);
+#endif
+}
+
+/**
 \brief Start an HDLC frame in the output buffer.
 */
 port_INLINE void outputHdlcOpen(void) {
@@ -655,7 +761,7 @@ port_INLINE void outputHdlcOpen(void) {
     openserial_vars.hdlcOutputCrc = HDLC_CRCINIT;
 
     // write the opening HDLC flag
-    openserial_vars.outputBuf[OUTPUT_BUFFER_MASK & (openserial_vars.outputBufIdxW++)] = HDLC_FLAG;
+    outputHdlcByte(HDLC_FLAG);
 
     ENABLE_INTERRUPTS();
     //>>>>>>>>>>>>>>>>>>>>>>>
@@ -675,10 +781,10 @@ port_INLINE void outputHdlcWrite(uint8_t b) {
 
     // add byte to buffer
     if (b == HDLC_FLAG || b == HDLC_ESCAPE) {
-        openserial_vars.outputBuf[OUTPUT_BUFFER_MASK & (openserial_vars.outputBufIdxW++)] = HDLC_ESCAPE;
+        outputHdlcByte(HDLC_ESCAPE);
         b = b ^ HDLC_ESCAPE_MASK;
     }
-    openserial_vars.outputBuf[OUTPUT_BUFFER_MASK & (openserial_vars.outputBufIdxW++)] = b;
+    outputHdlcByte(b);
 
     ENABLE_INTERRUPTS();
     //>>>>>>>>>>>>>>>>>>>>>>>
@@ -702,7 +808,7 @@ port_INLINE void outputHdlcClose(void) {
     outputHdlcWrite((finalCrc >> 8) & 0xff);
 
     // write the closing HDLC flag
-    openserial_vars.outputBuf[OUTPUT_BUFFER_MASK & (openserial_vars.outputBufIdxW++)] = HDLC_FLAG;
+    outputHdlcByte(HDLC_FLAG);
 
     ENABLE_INTERRUPTS();
     //>>>>>>>>>>>>>>>>>>>>>>>
@@ -785,9 +891,15 @@ void isr_openserial_tx(void) {
             openserial_vars.fBusyFlushing = FALSE;
         } else {
             uart_setCTS(TRUE);
+            // Release the flush lock as well: with only uart_setCTS(TRUE) here,
+            // fBusyFlushing stayed TRUE forever when inhibitStop() landed
+            // between uart_writeByte() and TXDRDY, and the TX chain deadlocked
+            // (outputBufIdxW != idxR with busy=1).
+            openserial_vars.fBusyFlushing = FALSE;
         }
         openserial_vars.ctsStateChanged = FALSE;
-    } else if (openserial_vars.fInhibited == TRUE) {
+    }
+    if (openserial_vars.fInhibited == TRUE) {
         // currently inhibited
 
         openserial_vars.fBusyFlushing = FALSE;

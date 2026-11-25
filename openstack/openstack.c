@@ -55,8 +55,12 @@ void openstack_init(void) {
 
     //===== drivers
     opentimers_init();
+    // openserial must be initialised even when SUPER_LOW_POWER is set: it
+    // registers the UART callbacks (uart_setCallbacks) and starts the debug
+    // print timer. Skipping it leaves the mote mute and deaf on its serial
+    // port, which is exactly where the 'V' voltage command and the TOPO
+    // reports come from.
 #if SUPER_LOW_POWER
-
 #else
     openserial_init();
 #endif

@@ -60,6 +60,22 @@ bool topology_isAcceptablePacket(ieee802154_header_iht* ieee802514_header) {
    if (ieee802514_header->src.type != ADDR_64B) {
       return TRUE;
    }
+#if TOPOLOGY_SELF_EUI7 != 0xFF
+   // Generic per-board accept list (2026-11-10): the board identified by
+   // TOPOLOGY_SELF_EUI7 hears only the sources in TOPOLOGY_ACCEPT_LIST, so it
+   // cannot pick the DAG root (or any unlisted board) as its parent. All other
+   // boards fall through to the legacy role table below.
+   if (idmanager_getMyID(ADDR_64B)->addr_64b[7] == TOPOLOGY_SELF_EUI7) {
+      static const uint8_t acceptList[] = TOPOLOGY_ACCEPT_LIST;
+      uint8_t i;
+      for (i = 0; i < sizeof(acceptList); i++) {
+         if (acceptList[i] == ieee802514_header->src.addr_64b[7]) {
+            return TRUE;
+         }
+      }
+      return FALSE;
+   }
+#endif /* TOPOLOGY_SELF_EUI7 != 0xFF */
 
    returnVal = FALSE;
 

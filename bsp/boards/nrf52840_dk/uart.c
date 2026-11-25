@@ -15,8 +15,20 @@
 
 //=========================== defines =========================================
 
-#define UART_RX_PIN       NRF_GPIO_PIN_MAP(0,2) // p0.08
-#define UART_TX_PIN       NRF_GPIO_PIN_MAP(0,4) // p0.06
+// Two wirings exist for the same firmware:
+//   default       the battery-free mote: the USB-TTL is soldered/wired to
+//                 P0.02 (mote RX) and P0.04 (mote TX), see the "add energy
+//                 aware part into battery-free mote" commit;
+//   uart-vcom     a stock nRF52840-DK, where the same UART comes out on the
+//                 on-board J-Link CDC through P0.08/P0.06.
+// Select the second with: scons ... boardopt=uart-vcom
+#ifdef UART_PINS_VCOM
+#define UART_RX_PIN       NRF_GPIO_PIN_MAP(0,8) // p0.08 (DK VCOM)
+#define UART_TX_PIN       NRF_GPIO_PIN_MAP(0,6) // p0.06 (DK VCOM)
+#else
+#define UART_RX_PIN       NRF_GPIO_PIN_MAP(0,2) // p0.02
+#define UART_TX_PIN       NRF_GPIO_PIN_MAP(0,4) // p0.04
+#endif
 #define UART_CTS_PIN      NRF_GPIO_PIN_MAP(0,7) // p0.07
 #define UART_RTS_PIN      NRF_GPIO_PIN_MAP(0,5) // p0.05
 
@@ -51,6 +63,21 @@ void uart_init(void) {
     // reset local variables
     memset(&uart_vars,0,sizeof(uart_vars_t));
 
+    // The UART is clocked by HFCLK: if the radio driver has stopped it, every
+    // byte written to TXD is silently lost. HFCLK is kept running in this build
+    // (hfclock_stop() in radio.c is a no-op), but it must come from the 32 MHz
+    // crystal: after reset SRC=0 means the internal RC oscillator (+/-2%), which
+    // is fine for the UART but useless for the radio. Check both STATE and SRC.
+    if ((NRF_CLOCK->HFCLKSTAT & 0x00010001) != 0x00010001) {
+        NRF_CLOCK->EVENTS_HFCLKSTARTED = 0;
+        NRF_CLOCK->TASKS_HFCLKSTART    = 1;
+        {
+            uint32_t timeout = 2000000;
+            while ((NRF_CLOCK->EVENTS_HFCLKSTARTED == 0) && (--timeout != 0)) {
+            }
+        }
+    }
+
     NRF_P0->PIN_CNF[UART_TX_PIN] = ((uint32_t)GPIO_PIN_CNF_DIR_Output << GPIO_PIN_CNF_DIR_Pos)
                                | ((uint32_t)GPIO_PIN_CNF_INPUT_Disconnect << GPIO_PIN_CNF_INPUT_Pos)
                                | ((uint32_t)GPIO_PIN_CNF_PULL_Disabled << GPIO_PIN_CNF_PULL_Pos)
@@ -62,8 +89,16 @@ void uart_init(void) {
                                | ((uint32_t)GPIO_PIN_CNF_DRIVE_S0S1 << GPIO_PIN_CNF_DRIVE_Pos)
                                | ((uint32_t)GPIO_PIN_CNF_SENSE_Disabled << GPIO_PIN_CNF_SENSE_Pos);
     
-    NRF_UART0->PSEL.TXD = UART_TX_PIN;
-    NRF_UART0->PSEL.RXD = UART_RX_PIN;
+    // Pin select: 0x50C is PSELTXD, 0x514 is PSELRXD; 0x510 is PSELCTS. The
+    // vendored header orders UART_PSEL_Type as RTS/TXD/CTS/RXD (see
+    // sdk/nrf52840.h:290-295), i.e. the same offsets.  Measured on a stock DK
+    // (S/N 1050208732, RX = P0.08, TX = P0.06): with 0x510 = 0xFFFFFFFF and
+    // 0x514 = 8 the mote answers a bare 'V'; with 0x510 = 8 and
+    // 0x514 = 0xFFFFFFFF it transmits normally but never sees the command.
+    // Writing RX to 0x510 (an earlier "fix" in this file) therefore left
+    // PSELRXD at its reset value 0xFFFFFFFF and made every build deaf.
+    *(volatile uint32_t *)((uint32_t)NRF_UART0 + 0x50C) = UART_TX_PIN; // PSELTXD
+    *(volatile uint32_t *)((uint32_t)NRF_UART0 + 0x514) = UART_RX_PIN; // PSELRXD
 
     // default: stop 1 bit, no parity, no HWFC
     NRF_UART0->CONFIG   = 0 ;
@@ -178,3 +213,4 @@ kick_scheduler_t uart_rx_isr(void) {
 
     return DO_NOT_KICK_SCHEDULER;
 }
+// probe

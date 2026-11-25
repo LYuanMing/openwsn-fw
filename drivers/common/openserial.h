@@ -54,6 +54,24 @@
 #define SERFRAME_PC2MOTE_RESET                   ((uint8_t)'Q')
 #define SERFRAME_PC2MOTE_DATA                    ((uint8_t)'D')
 #define SERFRAME_PC2MOTE_TRIGGERSERIALECHO       ((uint8_t)'S')
+// 'V' + 2-byte big-endian mV (payload length 3) sets the energy-aware working
+// point at run time; a bare 'V' (payload length 1) only reports the current
+// value.  Clamped to [MIN_VOLTAGE_MV, MAX_VOLTAGE_MV] by energy_aware_setVoltage().
+#define SERFRAME_PC2MOTE_SETVOLTAGE              ((uint8_t)'V')
+// 'T' asks a DAG root to print the last uinject report of every child it has
+// heard from, so a host that connects later shows the whole tree at once
+// instead of waiting one uinject period per node.
+#define SERFRAME_PC2MOTE_DUMPTOPO                ((uint8_t)'T')
+// 'W' + EUI64[7] of the target + 2-byte big-endian mV (payload length 4): the
+// DAG root broadcasts the command over the mesh so a host wired to the root can
+// retune any node.  Only the node whose EUI64[7] matches applies it.
+#define SERFRAME_PC2MOTE_SETVOLTAGE_REMOTE        ((uint8_t)'W')
+// 'M' + mode + tmin_s (payload length 3): how a working-point change is
+// announced.  mode 0 = only on the normal DIO schedule (the experiment
+// setting), 1 = immediate burst (measure a parent switch), 2 = one immediate
+// DIO; tmin_s floors the number of forced announcements (0 = no floor).  The
+// mode is volatile: a reset returns to OPENWSN_EA_DIO_ON_VOLTAGE.
+#define SERFRAME_PC2MOTE_EADIOMODE                 ((uint8_t)'M')
 
 //=========================== macros =========================================
 

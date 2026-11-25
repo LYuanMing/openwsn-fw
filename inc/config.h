@@ -175,7 +175,7 @@
  *
  */
 #ifndef OPENWSN_UINJECT_C
-#define OPENWSN_UINJECT_C (0)
+#define OPENWSN_UINJECT_C (1)
 #endif
 
 
@@ -300,6 +300,32 @@
 #endif
 
 /**
+ * \def TOPOLOGY_SELF_EUI7
+ *
+ * Forced-topology accept list (2026-11-10, A/B/C experiment). The board whose
+ * EUI64 last byte equals TOPOLOGY_SELF_EUI7 hears ONLY the sources listed in
+ * TOPOLOGY_ACCEPT_LIST; every other board keeps the legacy table in
+ * topology.c. 0xFF = this build filters nothing.
+ *
+ */
+#ifndef TOPOLOGY_SELF_EUI7
+#define TOPOLOGY_SELF_EUI7              (0x61)
+#endif
+
+/**
+ * \def TOPOLOGY_ACCEPT_LIST
+ *
+ * Source EUI64 last bytes the board identified by TOPOLOGY_SELF_EUI7 may
+ * receive. Frames from anyone else are dropped in
+ * topology_isAcceptablePacket(), so the mote can only join a listed parent.
+ * Written by tools/apply_config.py --topo-self / --topo-accept.
+ *
+ */
+#ifndef TOPOLOGY_ACCEPT_LIST
+#define TOPOLOGY_ACCEPT_LIST            {0xD9, 0xCD, 0x32}
+#endif
+
+/**
  * \def OPENWSN_RXDIAG_C
  *
  * Diagnostic-only (2026-10-04).  Split the received-frame counter by whether the
@@ -400,13 +426,30 @@
 
 
 /**
- * \def DAGROOT
+ * \def OPENWSN_SERIAL_CONSOLE_C
  *
- * Set this mote as the DODAG root.
+ * Compile in the UART driver and openserial. Both are needed for the 'V'
+ * voltage command (drivers/common/openserial.c) and for the uinject/TOPO
+ * reports; with 0 the mote is mute and deaf on its serial port.
  *
  */
-#ifndef DAGROOT
-#define DAGROOT (1)
+/**
+\def OPENWSN_EA_DIO_ON_VOLTAGE
+
+\brief Announce a throttle-factor change at once: 0 = off, 1 = burst, 2 = single.
+
+0 is the value the experiments run with: the rank still changes with the
+voltage, but it is announced on the normal DIO schedule, so the control traffic
+depends on the protocol and not on how fast the capacitor voltage moves.
+The debug value can also be set at run time over the serial port ('M' frame),
+so a testbed image does not have to be rebuilt to measure a parent switch.
+*/
+#ifndef OPENWSN_EA_DIO_ON_VOLTAGE
+#define OPENWSN_EA_DIO_ON_VOLTAGE (0)
+#endif
+
+#ifndef OPENWSN_SERIAL_CONSOLE_C
+#define OPENWSN_SERIAL_CONSOLE_C (1)
 #endif
 
 /**
@@ -415,6 +458,20 @@
  * Set this mote as the DODAG root.
  *
  */
+#ifndef DAGROOT
+#define DAGROOT (0)
+#endif
+
+/**
+ * \def SUPER_LOW_POWER
+ *
+ * Set the board to super low power mode
+ *
+ */
+#ifndef  SUPER_LOW_POWER
+#define SUPER_LOW_POWER (1)
+#endif
+
 #ifndef PANID_DEFINED
 #define PANID_DEFINED   (0xcafe)
 #endif

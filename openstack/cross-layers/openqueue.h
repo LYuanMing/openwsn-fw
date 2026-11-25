@@ -76,12 +76,16 @@ uint8_t openqueue_getNum6PReq(open_addr_t *neighbor);
 
 void openqueue_remove6PrequestToNeighbor(open_addr_t *neighbor);
 
+void openqueue_removeAll6PResponses(void);
+
 // called by IEEE80215E
 OpenQueueEntry_t* openqueue_macGetEBPacket(void);
 
 OpenQueueEntry_t* openqueue_macGetKaPacket(open_addr_t *toNeighbor);
 
 OpenQueueEntry_t* openqueue_macGetDIOPacket(void);
+
+OpenQueueEntry_t* openqueue_macGetAppBroadcastPacket(void);
 
 OpenQueueEntry_t* openqueue_macGetUnicastPacket(open_addr_t *toNeighbor);
 

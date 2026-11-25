@@ -82,6 +82,8 @@ void utemperature_init(void) {
 
 //=========================== private =========================================
 
+#if ENERGY_THROTTLE
+#else
 void get_temperature(int32_t* result)
 {
   NRF_TEMP->EVENTS_DATARDY = 0;
@@ -90,6 +92,7 @@ void get_temperature(int32_t* result)
   *result = NRF_TEMP->TEMP;
   return;
 }
+#endif
 
 void utemperature_sock_handler(sock_udp_t *sock, sock_async_flags_t type, void *arg) {
     (void) arg;

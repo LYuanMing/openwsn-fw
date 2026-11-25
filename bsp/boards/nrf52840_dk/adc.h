@@ -11,7 +11,9 @@
 //=========================== define ==========================================
 #define VOLTAGE_REF 600
 #define VOLTAGE_GAIN 6
-#define ADC_RAW_TO_MV(raw)  (((uint32_t)(raw) * (VOLTAGE_REF * VOLTAGE_GAIN)) >> 10)
+//#define ADC_RAW_TO_MV(raw)  (((uint32_t)(raw) * (VOLTAGE_REF * VOLTAGE_GAIN)) >> 10)
+/* 12 位：raw 范围 0~4095，LSB = 3600mV / 4096 ≈ 0.879mV */
+#define ADC_RAW_TO_MV(raw)  (((uint32_t)(raw) * (VOLTAGE_REF * VOLTAGE_GAIN)) >> 12)
 //=========================== typedef =========================================
 
 //=========================== module variables ================================

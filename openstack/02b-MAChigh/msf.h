@@ -93,6 +93,10 @@ void msf_updateCellsElapsed(open_addr_t *neighbor, cellType_t cellType);
 
 void msf_updateCellsUsed(open_addr_t *neighbor, cellType_t cellType);
 
+// Run the cell housekeeping now (normally driven by a 30 s timer); RPL calls
+// this right after a parent switch so 6P does not wait for the next period.
+void msf_timer_housekeeping_task(void);
+
 uint16_t msf_hashFunction_getSlotoffset(open_addr_t *address);
 
 uint8_t msf_hashFunction_getChanneloffset(open_addr_t *address);

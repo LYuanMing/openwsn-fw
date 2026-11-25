@@ -14,6 +14,7 @@
 #include "debugpins.h"
 #include "leds.h"
 #include "radio.h"
+#include "openserial.h"
 
 
 //=========================== defines =========================================
@@ -488,23 +489,35 @@ static uint8_t ble_channel_to_frequency(uint8_t channel) {
 }
 
 static void hfclock_start(void) {
+    // HFCLKSTAT.SRC tells where the 32 MHz clock comes from: 0 = internal RC
+    // oscillator (HFINT, +/-2%), 1 = crystal (HFXO). After reset the chip runs
+    // from HFINT, so STATE is already "running" while SRC is still 0. The radio
+    // needs the crystal: with HFINT the TX carrier is off by up to ~48 MHz and
+    // the receiver never sees the SFD (TX completes, RX hears nothing).
+    // Therefore only skip the start when the crystal is already the source.
+    if ((NRF_CLOCK->HFCLKSTAT & 0x00010001) == 0x00010001) {
+        return;
+    }
     NRF_CLOCK->EVENTS_HFCLKSTARTED = 0;
     NRF_CLOCK->TASKS_HFCLKSTART    = 1;
-    while (NRF_CLOCK->EVENTS_HFCLKSTARTED == 0);
+    // bounded wait so a dead crystal cannot hang the mote forever
+    {
+        uint32_t timeout = 2000000;
+        while ((NRF_CLOCK->EVENTS_HFCLKSTARTED == 0) && (--timeout != 0)) {
+        }
+    }
 }
 
 static void hfclock_stop(void) {
-    
-    // check clock source
-    if((NRF_CLOCK->HFCLKSTAT & 0x00000001) != 0) {
-        
-        // clock running?
-        if((NRF_CLOCK->HFCLKSTAT & 0x00010000) != 0) {
-            
-            NRF_CLOCK->TASKS_HFCLKSTOP = 1;
-            while((NRF_CLOCK->HFCLKSTAT & 0x00000001) != 0);
-        }
-    }
+    // SUPER_LOW_POWER builds only: radio_rfOff() calls this at the end of every
+    // slot, and on a battery node nothing else needs the 32 MHz crystal (the
+    // UART is not initialised, and sctimer.c runs off RTC0/LFCLK), so the HFXO
+    // is switched off between slots instead of burning ~1 mA forever.
+    // The DK/root build (SUPER_LOW_POWER 0) never reaches here: its
+    // radio_rfOn()/radio_rfOff() do not call hfclock_start()/hfclock_stop().
+    // hfclock_start() waits for EVENTS_HFCLKSTARTED, so the next slot still
+    // starts on a settled crystal (~0.4 ms HFXO startup).
+    NRF_CLOCK->TASKS_HFCLKSTOP = 1;
 }
 
 //=========================== callbacks =======================================

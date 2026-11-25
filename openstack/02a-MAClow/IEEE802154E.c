@@ -22,6 +22,16 @@
 
 //=========================== definition ======================================
 
+// Per-slot "I skip slot" / "neighbor skip slot" console logging.
+// Off by default: with throttle_factor > 0 these fire on every skipped slot
+// (about 40 lines/s at 115200 baud, e.g. tf=3). That saturates the serial
+// console -- the 'V' voltage replies get stuck behind the spam -- and the
+// formatting runs inside the slot ISR. Build with
+// -DOPENWSN_SLOT_SKIP_LOG=1 (or flip this define) to get the lines back.
+#ifndef OPENWSN_SLOT_SKIP_LOG
+#define OPENWSN_SLOT_SKIP_LOG 0
+#endif
+
 //=========================== variables =======================================
 
 ieee154e_vars_t ieee154e_vars;
@@ -29,6 +39,14 @@ ieee154e_stats_t ieee154e_stats;
 ieee154e_dbg_t ieee154e_dbg;
 
 bool long_sleep_flag = FALSE;
+
+#if XTAL_COMPENSATION
+// Fractional (Q16.16) accumulator of the per-slot crystal-drift correction.
+// Each new slot advances it by XTAL_COMP_Q16 (ticks/slot * 65536); the integer
+// part is the number of 32.768 kHz ticks to pull the slot reference back by.
+static uint32_t xtalCompAccumQ16;
+#endif
+
 //=========================== prototypes ======================================
 
 // SYNCHRONIZING
@@ -330,6 +348,7 @@ void ieee154e_orderToASNStructure(uint8_t *in, asn_t *val_asn) {
 
 This function executes in ISR mode, when the new slot timer fires.
 */
+
 void isr_ieee154e_newSlot(opentimers_id_t id) {
 #if XTAL_COMPENSATION
   // DK board's 32.768 kHz sleep crystal differs from the bare nRF52840 module
@@ -338,11 +357,18 @@ void isr_ieee154e_newSlot(opentimers_id_t id) {
   // sync to the parent — which manifests as fewer-than-expected children
   // connecting during the multi-leaf validation experiment (2026-09-11).
   // DO NOT enable on root/DUT — they share the same crystal as the parent.
-  if(ieee154e_vars.asn.bytes0and1 % 10 == 0) {
-    ieee154e_vars.startOfSlotReference = opentimers_getCurrentCompareValue()-1;
-  }
-  else {
-    ieee154e_vars.startOfSlotReference = opentimers_getCurrentCompareValue();
+  {
+      uint32_t nslots = (ieee154e_vars.slotDuration + (TsSlotDuration / 2)) / TsSlotDuration;
+      uint32_t k;
+
+      // Slots slept through (SLOTSKIP) each carry the same drift, so scale the
+      // per-slot increment by the number of slots this timer covers.
+      xtalCompAccumQ16 += nslots * (uint32_t)XTAL_COMP_Q16;
+      k = xtalCompAccumQ16 >> 16;
+      xtalCompAccumQ16 -= k << 16;
+
+      ieee154e_vars.startOfSlotReference =
+      opentimers_getCurrentCompareValue() - (PORT_SIGNED_INT_WIDTH)k;
   }
 #else
   ieee154e_vars.startOfSlotReference = opentimers_getCurrentCompareValue();
@@ -921,6 +947,7 @@ port_INLINE void activity_ti1ORri1(void) {
   uint8_t asn[5];
   uint8_t join_priority;
   bool couldSendEB = FALSE;
+  bool isAppBroadcast = FALSE;
 
   // increment ASN (do this first so debug pins are in sync)
   incrementAsnOffset();
@@ -1021,7 +1048,9 @@ port_INLINE void activity_ti1ORri1(void) {
       if (energy_vars.throttle_factor > 0) {
           throttol_mask = (1 << energy_vars.throttle_factor) - 1;
           if ((current_sf & throttol_mask) != 0) {
+#if OPENWSN_SLOT_SKIP_LOG
               openserial_printf("SF %d I skip slot\r\n", current_sf);
+#endif
               endSlot();
               return;
           }
@@ -1051,7 +1080,9 @@ port_INLINE void activity_ti1ORri1(void) {
       if (neighbor_throttle_factor > 0) {
           throttol_mask = (1 << neighbor_throttle_factor) - 1;
           if ((current_sf & throttol_mask) != 0) {
+#if OPENWSN_SLOT_SKIP_LOG
               openserial_printf("SF %d neighbor skip slot\r\n", current_sf);
+#endif
               endSlot();
               return;
           }
@@ -1091,11 +1122,37 @@ port_INLINE void activity_ti1ORri1(void) {
         }
       } else {
         // this is minimal cell
+        couldSendEB = FALSE;
+        isAppBroadcast = FALSE;
         ieee154e_vars.dataToSend = openqueue_macGetDIOPacket();
+        if (ieee154e_vars.dataToSend == NULL) {
+          // one pending application broadcast goes out before the next EB
+          // copy; the sender only queues a couple of them, so the EB stream
+          // is delayed by at most that many shared cells
+          ieee154e_vars.dataToSend = openqueue_macGetAppBroadcastPacket();
+          if (ieee154e_vars.dataToSend != NULL) {
+            isAppBroadcast = TRUE;
+          }
+        }
         if (ieee154e_vars.dataToSend == NULL) {
           couldSendEB = TRUE;
           // look for an EB packet in the queue
           ieee154e_vars.dataToSend = openqueue_macGetEBPacket();
+        }
+        // Slotted-ALOHA gate.  The shared cell is the only broadcast channel,
+        // and every node with a queued EB or DIO used to transmit in every one
+        // of them, so with more than two motes they all collide (broadcasts
+        // have no ACK: nothing is retried and nothing backs off).  Transmit
+        // with probability 1/4 instead: the packet stays in the queue, so a
+        // skipped slot only costs a delay, while one transmitter per slot on
+        // average lets most slots succeed.
+        // An application broadcast (the root's SETVOLT command) is a one-off and
+        // must not be delayed by tens of seconds, so it skips the gate; EB and
+        // DIO are periodic and can afford to lose one slot.
+        if (ieee154e_vars.dataToSend != NULL && isAppBroadcast == FALSE &&
+            (openrandom_get16b() & 0x3) != 0) {
+          ieee154e_vars.dataToSend = NULL;
+          couldSendEB = FALSE;
         }
       }
     }

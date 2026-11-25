@@ -66,10 +66,22 @@ void openbridge_sendDone(OpenQueueEntry_t *msg, owerror_t error) {
     openqueue_freePacketBuffer(msg);
 }
 
+// uinject.c provides the strong definition when the uinject app is built; it
+// keeps the root-side topology snapshot up to date.  A build without the app
+// simply does not fill the cache.
+__attribute__((weak)) void uinject_cacheFromPacket(uint8_t *buffer, uint8_t len) {
+    (void)buffer;
+    (void)len;
+}
+
 /**
 \brief Receive a frame at the openbridge, which sends it out over serial.
 */
 void openbridge_receive(OpenQueueEntry_t *msg) {
+
+    // keep the 'T' snapshot cache up to date (a root never delivers these
+    // packets to its local sockets, see iphc_receive())
+    uinject_cacheFromPacket(msg->payload, msg->length);
 
     // prepend previous hop
     packetfunctions_reserveHeader(&msg, LENGTH_ADDR64b);

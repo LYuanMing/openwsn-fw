@@ -118,6 +118,8 @@ if 'printf' in env['boardopt'].split(','):
     env.Append(CPPDEFINES='BOARD_OPENSERIAL_PRINTF')
 if 'fastsim' in env['boardopt'].split(','):
     env.Append(CPPDEFINES='BOARD_FASTSIM_ENABLED')
+if 'uart-vcom' in env['boardopt'].split(','):
+    env.Append(CPPDEFINES='UART_PINS_VCOM')
 
 # set logging level OpenWSN
 env.Append(CPPDEFINES='OPENWSN_DEBUG_LEVEL={}'.format(env['logging']))

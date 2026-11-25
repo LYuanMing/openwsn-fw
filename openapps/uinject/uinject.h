@@ -14,7 +14,10 @@
 
 //=========================== define ==========================================
 
-#define UINJECT_PERIOD_MS 2000
+// One report per node every 10 s (2026-11-10: was 2000 ms; the host-side
+// topology viewer does not need a 2 s refresh, and a slower rate leaves airtime
+// to the throttled nodes and shrinks the serial log).
+#define UINJECT_PERIOD_MS 10000
 
 //=========================== typedef =========================================
 
@@ -30,6 +33,10 @@ typedef struct {
 //=========================== prototypes ======================================
 
 void uinject_init(void);
+void uinject_requestDump(void);
+void uinject_requestSetVoltage(uint8_t eui7, uint16_t mv);
+void uinject_onParentChanged(void);
+void uinject_dumpTopology(void);
 
 /**
 \}

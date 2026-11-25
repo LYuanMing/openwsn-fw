@@ -2,6 +2,7 @@
 #include "openserial.h"
 #include "adc.h"
 #include "debugpins.h"
+#include "opentimers.h"
 
 energy_vars_t energy_vars;
 extern ieee154e_vars_t ieee154e_vars;
@@ -13,7 +14,12 @@ extern ieee154e_vars_t ieee154e_vars;
 static uint8_t ea_index;
 static uint8_t direction = 0;
 static uint16_t current_voltage = 4200;
-#define FIXED_ENERGY 1
+// set when the working point is changed at run time over the serial port
+// ('V' command); it suppresses the scheduled two-phase join switch, which
+// would otherwise overwrite the operator's value at EA_JOIN_SLOTS
+static uint8_t voltage_pinned = 0;
+#define FIXED_ENERGY 0
+#define ENERGY_CYCLE 0
 
 // ---- two-phase join (user idea, 2026-09-26) -------------------------------
 // "join at full duty, then switch to the working point after a given ASN"
@@ -63,22 +69,45 @@ void energyMeasurementInit(void)
     ea_index = 0;
     energy_vars.e_surplus_uJ = 0;
     energy_vars.throttle_factor = 0;
-    //adc_init();
+    // The DAG root never enters the sampling branch of task_energyMeasurement(),
+    // so seed the reported working point here; the host reads it back with a
+    // bare 'V' command and shows it next to the root in the topology view.
+    energy_vars.voltage_mV = current_voltage;
+    adc_init();
+}
+
+// Runtime working-point override, called from the serial command handler
+// (openserial.c, SERFRAME_PC2MOTE_SETVOLTAGE).  Clamps to the same range the
+// compile-time configuration uses, then makes the value effective immediately:
+// waiting for the next ea_index%4==0 tick would leave the throttle factor stale.
+void energy_aware_setVoltage(uint16_t mv)
+{
+    if (mv < MIN_VOLTAGE_MV) {
+        mv = MIN_VOLTAGE_MV;
+    }
+    if (mv > MAX_VOLTAGE_MV) {
+        mv = MAX_VOLTAGE_MV;
+    }
+    voltage_pinned = 1;
+    current_voltage = mv;
+    energy_vars.voltage_mV = mv;
+    energy_vars.e_surplus_uJ = CALCULATE_ENERGY_UJ(mv);
+    update_throttle_factor();
 }
 
 void task_energyMeasurement(void)
 {
     if (idmanager_getIsDAGroot() == TRUE) {
         energy_vars.throttle_factor = 0;
+        energy_vars.voltage_mV = current_voltage;
         energy_vars.e_surplus_uJ = E_MAX;
     } else {
-        //adc_start_sampling();
         ea_index += 1;
         if(ea_index % 4 == 0) {
 #if EA_JOIN_MV > 0
             // two-phase join: switch from the join working point to the target
             // one after EA_JOIN_SLOTS slots (see the EA_JOIN_* block above)
-            if (current_voltage == EA_JOIN_MV) {
+            if ((voltage_pinned == 0) && (current_voltage == EA_JOIN_MV)) {
                 uint32_t asn_low;
                 asn_low = (uint32_t)ieee154e_vars.asn.bytes0and1 |
                           ((uint32_t)ieee154e_vars.asn.bytes2and3 << 16);
@@ -92,7 +121,8 @@ void task_energyMeasurement(void)
 #if FIXED_ENERGY 
             energy_vars.voltage_mV = current_voltage;
             energy_vars.e_surplus_uJ = CALCULATE_ENERGY_UJ(energy_vars.voltage_mV);
-#else 
+            update_throttle_factor();
+#elif ENERGY_CYCLE
             if (direction == 0) {
                 // ---------- 放电阶段 ----------
                 if (current_voltage >= (MIN_VOLTAGE_MV + 100)) {
@@ -112,24 +142,90 @@ void task_energyMeasurement(void)
             }
             energy_vars.voltage_mV = current_voltage;
             energy_vars.e_surplus_uJ = CALCULATE_ENERGY_UJ(current_voltage);
-#endif
             update_throttle_factor();
+#else
+        adc_start_sampling();
+#endif
+            
             //openserial_printf("current energy: %d\r\n", energy_vars.e_surplus_uJ);
         } 
     }
 
 }
 
+// Implemented by openstack/03b-IPv6/icmpv6rpl.c; weak so a build without RPL
+// still links.  Guarded before every call.
+__attribute__ ((weak)) void icmpv6rpl_triggerDIO(uint8_t burst);
+
+// ---- announcing a working-point change (decided 2026-11-11) ---------------
+//
+// Announcing at once is a *debug* aid.  The experiment measures energy and
+// throughput with a voltage that moves continuously, and an immediate DIO per
+// change would (a) turn the control traffic into a function of the voltage
+// dynamics instead of the protocol, and (b) crowd the shared cell - the same
+// failure mode that EB_PORTION=1 produced earlier.
+//
+// So: mode 0 (default) does nothing at all, i.e. the behaviour of the reference
+// implementation; the rank still changes, it is simply announced on the normal
+// DIO schedule.  Mode 1 sends DIO_BURST copies at once (measure switch latency),
+// mode 2 sends one.  Both are floored by eaDioTminS seconds, because a floor of
+// a few seconds is what keeps a continuously moving voltage from turning into a
+// DIO per slotframe: even with the floor the worst-case extra load is one
+// announcement per tmin, and only while the operator asked for it.
+static uint8_t  eaDioMode = OPENWSN_EA_DIO_ON_VOLTAGE;
+static uint8_t  eaDioTminS = 15;
+static uint32_t eaLastForcedMs = 0;
+
+// The floor is measured with the free-running counter rather than the ASN: a
+// node that has not synchronized yet still counts slots, and when it locks onto
+// the network the ASN can jump, which would defeat the floor exactly during a
+// join.  opentimers_getValue() wraps sctimer_readCounter(), i.e. RTC0 with
+// PRESCALER=0: 32768 ticks per second, not milliseconds (v26 got this wrong and
+// the floor never fired: 11.8 s looked like 386k "ms").
+#define EA_TICKS_PER_S 32768u
+
+void energy_aware_setDioMode(uint8_t mode, uint8_t tminS)
+{
+    eaDioMode = mode;
+    eaDioTminS = tminS;
+}
+
+uint8_t energy_aware_getDioMode(void)
+{
+    return eaDioMode;
+}
+
+uint8_t energy_aware_getDioTmin(void)
+{
+    return eaDioTminS;
+}
+
 void update_throttle_factor(void)
 {
+    uint8_t tf;
+
     if (energy_vars.voltage_mV >= 3500) {
-        energy_vars.throttle_factor = 0;
+        tf = 0;
     } else if (energy_vars.voltage_mV >= 3000) {
-        energy_vars.throttle_factor = 1;
+        tf = 1;
     } else if (energy_vars.voltage_mV >= 2500) {
-        energy_vars.throttle_factor = 2;
+        tf = 2;
     } else {
-        energy_vars.throttle_factor = 3;
+        tf = 3;
+    }
+
+    if (tf != energy_vars.throttle_factor) {
+        energy_vars.throttle_factor = tf;
+        if (eaDioMode != 0 && icmpv6rpl_triggerDIO != NULL) {
+            uint32_t now = opentimers_getValue();
+            if (eaDioTminS != 0 &&
+                    (uint32_t)(now - eaLastForcedMs) <
+                    (uint32_t)eaDioTminS * EA_TICKS_PER_S) {
+                return;     // announced too recently: leave it to the schedule
+            }
+            eaLastForcedMs = now;
+            icmpv6rpl_triggerDIO(eaDioMode == 1 ? 5 : 1);
+        }
     }
 }
 
@@ -144,16 +240,17 @@ void SAADC_IRQHandler(void) {
         NRF_SAADC->TASKS_STOP = 1; 
     }
 
+
     if (NRF_SAADC->EVENTS_STOPPED != 0) {
         NRF_SAADC->EVENTS_STOPPED = 0;
         // now the sampling is finished, then we update the voltage
         if (adc_buffer < 0) {
             energy_vars.voltage_mV = 0;
         } else {
-            energy_vars.voltage_mV = ADC_RAW_TO_MV(adc_buffer);
+            energy_vars.voltage_mV = (ADC_RAW_TO_MV(adc_buffer)) * 3;
         }
         update_throttle_factor();
-
+        adc_buffer = 0;
         energy_vars.e_surplus_uJ = CALCULATE_ENERGY_UJ(energy_vars.voltage_mV);
     }
 }

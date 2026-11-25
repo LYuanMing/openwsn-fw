@@ -44,7 +44,12 @@ static const uint8_t ebIEsBytestream[] = {
 #define TX_POWER                    31  // 1=-25dBm, 31=0dBm (max value)
 #define RESYNCHRONIZATIONGUARD       5  // in 32kHz ticks. min distance to the end of the slot to successfully synchronize
 #ifndef EB_PORTION
-#define EB_PORTION                  30 // set EB on minimal cell for 1/EB_PORTION portion
+#define EB_PORTION                  3 // set EB on minimal cell for 1/EB_PORTION portion
+// Trade-off measured on 4 motes (2026-11-11): EB_PORTION=3 joins in ~40 s but
+// the single shared cell is oversubscribed, so ~60% of the broadcasts (EB and
+// DIO) are lost; EB_PORTION=30 makes broadcasts reliable but a new node needs
+// minutes to hear an EB and join.  Keep 3: a rank change is announced right
+// away by icmpv6rpl_triggerDIO(), so the DIO loss costs seconds, not minutes.
 #endif
 // Per-build crystal-drift compensation. The DK board's 32.768 kHz sleep
 // crystal differs from the bare nrf52840 module crystal used by the relay/
@@ -52,27 +57,21 @@ static const uint8_t ebIEsBytestream[] = {
 // this; root and DUT (same crystal) MUST NOT enable it (the +1/-1 tick
 // re-anchor is unnecessary and degrades sync quality). Default 0 (disabled).
 #ifndef XTAL_COMPENSATION
-#define XTAL_COMPENSATION           1
+#define XTAL_COMPENSATION           0
 #endif
-// Per-build leaf-on gating (Round 6, 2026-09-11). Topology.c reads these to
-// decide which of the 5 leaf boards (EUI64[7] = 0xe4/0xcd/0x18/0xba/0x38)
-// accept DUT's frames. LEAFi_ON=0 -> reject all (board still powered, just
-// never becomes a child). Default 1 (all leaves accept DUT, previous behavior).
-#ifndef LEAF1_ON
-#define LEAF1_ON                    1
+// Per-slot crystal-drift correction, in Q16.16 of a 32.768 kHz tick. A slot is
+// 656 ticks (20 ms), so one tick per slot is 1/656 = 1524 ppm and
+//   ppm = XTAL_COMP_Q16 * 1e6 / (65536 * 656)  = XTAL_COMP_Q16 * 0.02328.
+// Calibrate by reading RTC0 (0x4000B504) on both boards against the host clock
+// (see .build/tmp/ppm_fit2.py): the leaf must cancel its own rate error, the
+// root must run uncompensated.
+//   6554 = 152.5 ppm : 1 tick every 10 slots (2026-11 setting, over-compensated)
+//   5462 = 127.1 ppm : 1 tick every 12 slots
+//   5375 = 125.1 ppm : first RTC measurement, DK vs self-made root
+#ifndef XTAL_COMP_Q16
+#define XTAL_COMP_Q16               5375
 #endif
-#ifndef LEAF2_ON
-#define LEAF2_ON                    1
-#endif
-#ifndef LEAF3_ON
-#define LEAF3_ON                    1
-#endif
-#ifndef LEAF4_ON
-#define LEAF4_ON                    1
-#endif
-#ifndef LEAF5_ON
-#define LEAF5_ON                    1
-#endif
+
 #ifndef MAXKAPERIOD
 #define MAXKAPERIOD               1000  // in slots: 1500@20ms per slot -> ~30 seconds. Max value used by adaptive synchronization.
 #endif

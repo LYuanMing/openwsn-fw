@@ -25,7 +25,10 @@
 #ifndef DEFAULTLINKCOST
 #define DEFAULTLINKCOST           4
 #endif
-#define MINIMAL_NUM_TX            16
+// A neighbor must have seen this many frames from me before I let it drive my
+// rank (icmpv6rpl.c:388-390).  2026-11-10: 16 -> 8, so a freshly joined node
+// adopts its parent's new rank after ~8 EBs/KAs instead of ~16.
+#define MINIMAL_NUM_TX            8
 
 #define MAXDAGRANK                0xffff
 #define DEFAULTDAGRANK            MAXDAGRANK
